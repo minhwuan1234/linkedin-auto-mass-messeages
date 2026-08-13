@@ -7,13 +7,14 @@ def get_profile_name(
     page: Page,
 ) -> dict[str, str]:
 
-    header = page.locator(
-        "main section"
+    name_locator = page.locator(
+        "main h1"
     ).first
 
-    name_locator = header.locator(
-        "h1"
-    ).first
+    if name_locator.count() == 0:
+        name_locator = page.locator(
+            "h1"
+        ).first
 
     name_locator.wait_for(
         state="visible",
