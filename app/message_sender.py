@@ -3,39 +3,18 @@ from __future__ import annotations
 from playwright.sync_api import Locator, Page
 
 
-def scroll_to_middle_of_profile(
+MAX_SCROLL_ATTEMPTS = 8
+SCROLL_DISTANCE = 600
+
+
+def find_visible_nav_message_action(
     page: Page,
-) -> None:
+) -> Locator | None:
     """
-    Scroll xuống giữa trang để LinkedIn
-    hiện sticky profile navigation bar.
+    Tìm Message action trên sticky profile navigation.
+
+    Chỉ trả về element nếu nó đang visible.
     """
-
-    page.evaluate(
-        """
-        window.scrollTo({
-            top: document.body.scrollHeight * 0.45,
-            behavior: "instant"
-        });
-        """
-    )
-
-    page.wait_for_timeout(
-        1_000
-    )
-
-
-def find_nav_message_action(
-    page: Page,
-) -> Locator:
-    """
-    Find the Message action from LinkedIn's
-    sticky profile navigation bar.
-    """
-
-    scroll_to_middle_of_profile(
-        page
-    )
 
     candidates = page.locator(
         'a[href*="recipient="][href*="interop=msgOverlay"]'
@@ -62,9 +41,66 @@ def find_nav_message_action(
         except Exception:
             continue
 
+    return None
+
+
+def scroll_until_nav_message_visible(
+    page: Page,
+) -> Locator:
+    """
+    Scroll xuống từng đoạn cho tới khi
+    sticky navigation bar xuất hiện.
+    """
+
+    print("")
+    print("==============================")
+    print("SCROLLING PROFILE")
+    print("==============================")
+
+    for attempt in range(
+        1,
+        MAX_SCROLL_ATTEMPTS + 1,
+    ):
+        message_action = (
+            find_visible_nav_message_action(
+                page
+            )
+        )
+
+        if message_action is not None:
+            print(
+                f"Sticky Message found "
+                f"after {attempt - 1} scroll(s)."
+            )
+            print("")
+
+            return message_action
+
+        print(
+            f"Scroll attempt {attempt}..."
+        )
+
+        page.mouse.wheel(
+            0,
+            SCROLL_DISTANCE,
+        )
+
+        page.wait_for_timeout(
+            700
+        )
+
+    message_action = (
+        find_visible_nav_message_action(
+            page
+        )
+    )
+
+    if message_action is not None:
+        return message_action
+
     raise RuntimeError(
-        "Could not find Message action "
-        "in sticky profile navigation."
+        "Sticky Message action did not appear "
+        "after scrolling down the profile."
     )
 
 
@@ -72,21 +108,14 @@ def open_message_composer(
     page: Page,
 ) -> None:
     """
-    Scroll profile, find sticky-nav Message action,
-    then open the LinkedIn message composer.
+    Scroll xuống profile cho đến khi sticky nav hiện,
+    sau đó click Message trên sticky nav.
     """
 
-    print("")
-    print("==============================")
-    print("SCROLLING PROFILE")
-    print("==============================")
-    print(
-        "Scrolling to middle of profile "
-        "to reveal sticky navigation..."
-    )
-
-    message_action = find_nav_message_action(
-        page
+    message_action = (
+        scroll_until_nav_message_visible(
+            page
+        )
     )
 
     text = (
@@ -103,19 +132,12 @@ def open_message_composer(
         or ""
     )
 
-    print("")
     print("==============================")
     print("NAV MESSAGE ACTION FOUND")
     print("==============================")
     print(f"Text: {text}")
     print(f"Href: {href}")
     print("")
-
-    message_action.scroll_into_view_if_needed()
-
-    page.wait_for_timeout(
-        300
-    )
 
     print(
         "Clicking Message from sticky nav..."
