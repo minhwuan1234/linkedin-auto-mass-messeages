@@ -1,5 +1,8 @@
 from pathlib import Path
 
+from app.browser import LinkedInBrowser
+from app.profile import get_profile_name
+
 
 PROJECT_ROOT = Path(
     __file__
@@ -43,20 +46,50 @@ def load_urls() -> list[str]:
 def main() -> None:
     urls = load_urls()
 
+    if not urls:
+        raise RuntimeError(
+            "No LinkedIn URLs found."
+        )
+
+    test_url = urls[0]
+
     print("")
     print("==============================")
-    print("LINKEDIN MASS MESSAGE")
+    print("PROFILE NAME TEST")
     print("==============================")
-    print(f"Loaded URLs: {len(urls)}")
+    print(f"URL: {test_url}")
     print("")
 
-    for index, url in enumerate(
-        urls,
-        start=1,
-    ):
-        print(
-            f"{index}. {url}"
+    browser = LinkedInBrowser()
+
+    try:
+        browser.start()
+
+        page = browser.open(
+            test_url
         )
+
+        profile = get_profile_name(
+            page
+        )
+
+        print("==============================")
+        print("PROFILE FOUND")
+        print("==============================")
+        print(
+            f"Full name : {profile['full_name']}"
+        )
+        print(
+            f"First name: {profile['first_name']}"
+        )
+        print("")
+
+        input(
+            "Press ENTER to close browser..."
+        )
+
+    finally:
+        browser.stop()
 
 
 if __name__ == "__main__":
