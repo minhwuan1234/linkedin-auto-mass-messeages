@@ -3,6 +3,9 @@ from __future__ import annotations
 from playwright.sync_api import Locator, Page
 
 
+MAX_MESSAGE_ATTEMPTS = 5
+
+
 # =========================================================
 # FIND MESSAGE ACTION
 # =========================================================
@@ -54,105 +57,172 @@ def find_profile_message_action(
 
 
 # =========================================================
-# SALES NAVIGATOR POPUP
+# FIND SALES NAVIGATOR POPUP
+# =========================================================
+
+def find_sales_navigator_popup(
+    page: Page,
+) -> Locator | None:
+    """
+    Return the visible Sales Navigator popup marker
+    if the promo is currently shown.
+    """
+
+    popup_markers = page.get_by_text(
+        "Try Sales Navigator",
+        exact=False,
+    )
+
+    count = popup_markers.count()
+
+    for index in range(count):
+        candidate = popup_markers.nth(index)
+
+        try:
+            if candidate.is_visible():
+                return candidate
+        except Exception:
+            continue
+
+    return None
+
+
+# =========================================================
+# CLOSE SALES NAVIGATOR POPUP
 # =========================================================
 
 def close_sales_navigator_popup(
     page: Page,
 ) -> bool:
     """
-    Detect the Sales Navigator promo popup.
+    Close Sales Navigator promo if visible.
 
-    Return:
-        True  -> popup found and closed
-        False -> popup not present
+    Returns:
+        True  = popup existed and was closed
+        False = popup was not visible
     """
 
-    popup_text = page.get_by_text(
-        "Try Sales Navigator",
-        exact=False,
+    popup_marker = find_sales_navigator_popup(
+        page
     )
 
-    try:
-        popup_text.first.wait_for(
-            state="visible",
-            timeout=2_500,
-        )
-
-    except Exception:
+    if popup_marker is None:
         return False
 
     print("")
     print("==============================")
     print("SALES NAVIGATOR POPUP FOUND")
     print("==============================")
-    print("Closing popup...")
-    print("")
-
-    # ---------------------------------------------
-    # Find the popup container first.
-    # ---------------------------------------------
-
-    popup_container = (
-        popup_text
-        .first
-        .locator(
-            "xpath=ancestor::div["
-            ".//button or .//*[@role='button']"
-            "][1]"
-        )
-    )
 
     close_button = None
 
-    # ---------------------------------------------
-    # Case 1 — accessible Close button
-    # ---------------------------------------------
+    # -----------------------------------------------------
+    # Case 1: normal Close button
+    # -----------------------------------------------------
 
-    possible_close = page.get_by_role(
+    close_candidates = page.get_by_role(
         "button",
         name="Close",
         exact=False,
     )
 
-    if possible_close.count() > 0:
-        close_button = (
-            possible_close
-            .filter(
-                visible=True
+    for index in range(
+        close_candidates.count()
+    ):
+        candidate = close_candidates.nth(
+            index
+        )
+
+        try:
+            if candidate.is_visible():
+                close_button = candidate
+                break
+        except Exception:
+            continue
+
+    # -----------------------------------------------------
+    # Case 2: aria-label close
+    # -----------------------------------------------------
+
+    if close_button is None:
+        close_candidates = page.locator(
+            '[aria-label*="close" i]'
+        )
+
+        for index in range(
+            close_candidates.count()
+        ):
+            candidate = close_candidates.nth(
+                index
             )
-            .first
-        )
 
-    # ---------------------------------------------
-    # Case 2 — aria-label close
-    # ---------------------------------------------
+            try:
+                if candidate.is_visible():
+                    close_button = candidate
+                    break
+            except Exception:
+                continue
 
-    if close_button is None:
-        possible_close = page.locator(
-            'button[aria-label*="close" i]'
-        )
-
-        if possible_close.count() > 0:
-            close_button = possible_close.first
-
-    # ---------------------------------------------
-    # Case 3 — role button inside popup container
-    # Use the top-right button.
-    # ---------------------------------------------
+    # -----------------------------------------------------
+    # Case 3: button inside popup container
+    # -----------------------------------------------------
 
     if close_button is None:
-        popup_buttons = popup_container.locator(
-            'button, [role="button"]'
+        popup_container = popup_marker.locator(
+            "xpath=ancestor::div[1]"
         )
 
-        if popup_buttons.count() > 0:
-            close_button = popup_buttons.first
+        for _ in range(6):
+            buttons = popup_container.locator(
+                'button, [role="button"]'
+            )
+
+            for index in range(
+                buttons.count()
+            ):
+                candidate = buttons.nth(
+                    index
+                )
+
+                try:
+                    if candidate.is_visible():
+                        text = (
+                            candidate
+                            .inner_text()
+                            .strip()
+                        )
+
+                        aria_label = (
+                            candidate
+                            .get_attribute(
+                                "aria-label"
+                            )
+                            or ""
+                        )
+
+                        if (
+                            "close" in aria_label.lower()
+                            or text in {"×", "✕", "X"}
+                        ):
+                            close_button = candidate
+                            break
+
+                except Exception:
+                    continue
+
+            if close_button is not None:
+                break
+
+            popup_container = (
+                popup_container.locator(
+                    "xpath=.."
+                )
+            )
 
     if close_button is None:
         raise RuntimeError(
             "Sales Navigator popup appeared "
-            "but close button was not found."
+            "but its close button was not found."
         )
 
     close_button.click(
@@ -160,12 +230,10 @@ def close_sales_navigator_popup(
     )
 
     page.wait_for_timeout(
-        800
+        700
     )
 
-    print("==============================")
-    print("SALES NAVIGATOR POPUP CLOSED")
-    print("==============================")
+    print("Sales Navigator popup closed.")
     print("")
 
     return True
@@ -178,67 +246,25 @@ def close_sales_navigator_popup(
 def open_message_composer(
     page: Page,
 ) -> None:
-    message_action = find_profile_message_action(
-        page
-    )
+    """
+    Click Message until the real message composer opens.
 
-    tag_name = message_action.evaluate(
-        "(el) => el.tagName"
-    )
+    LinkedIn may show the Sales Navigator promo
+    multiple times consecutively.
 
-    text = (
-        message_action
-        .inner_text()
-        .strip()
-    )
+    We close it and retry Message until no promo appears.
+    """
 
-    print("")
-    print("==============================")
-    print("MESSAGE ACTION FOUND")
-    print("==============================")
-    print(f"Tag : {tag_name}")
-    print(f"Text: {text}")
-    print("")
-
-    message_action.scroll_into_view_if_needed()
-
-    # =====================================================
-    # FIRST CLICK
-    # =====================================================
-
-    print("Clicking Message...")
-
-    message_action.click(
-        force=True,
-    )
-
-    page.wait_for_timeout(
-        1_000
-    )
-
-    # =====================================================
-    # CHECK SALES NAVIGATOR PROMO
-    # =====================================================
-
-    popup_was_closed = (
-        close_sales_navigator_popup(
-            page
-        )
-    )
-
-    # =====================================================
-    # SECOND CLICK ONLY IF POPUP APPEARED
-    # =====================================================
-
-    if popup_was_closed:
+    for attempt in range(
+        1,
+        MAX_MESSAGE_ATTEMPTS + 1,
+    ):
+        print("")
+        print("==============================")
         print(
-            "Clicking Message again "
-            "after closing popup..."
+            f"MESSAGE ATTEMPT {attempt}"
         )
-
-        page.wait_for_timeout(
-            500
-        )
+        print("==============================")
 
         message_action = (
             find_profile_message_action(
@@ -246,16 +272,47 @@ def open_message_composer(
             )
         )
 
+        message_action.scroll_into_view_if_needed()
+
+        print("Clicking Message...")
+
         message_action.click(
             force=True,
         )
 
         page.wait_for_timeout(
-            1_500
+            1_000
         )
 
-    print("")
-    print("==============================")
-    print("MESSAGE ACTION COMPLETED")
-    print("==============================")
-    print("")
+        popup_closed = (
+            close_sales_navigator_popup(
+                page
+            )
+        )
+
+        if popup_closed:
+            print(
+                "Promo interrupted Message."
+            )
+            print(
+                "Retrying Message..."
+            )
+
+            page.wait_for_timeout(
+                500
+            )
+
+            continue
+
+        print("")
+        print("==============================")
+        print("MESSAGE COMPOSER SHOULD BE OPEN")
+        print("==============================")
+        print("")
+
+        return
+
+    raise RuntimeError(
+        "Could not open Message composer "
+        f"after {MAX_MESSAGE_ATTEMPTS} attempts."
+    )
