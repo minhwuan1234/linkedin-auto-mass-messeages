@@ -8,13 +8,8 @@ def get_profile_name(
 ) -> dict[str, str]:
 
     name_locator = page.locator(
-        "main h1"
+        'div[data-testid="lazy-column"] h2'
     ).first
-
-    if name_locator.count() == 0:
-        name_locator = page.locator(
-            "h1"
-        ).first
 
     name_locator.wait_for(
         state="visible",
