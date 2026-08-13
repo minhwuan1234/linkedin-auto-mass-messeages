@@ -6,33 +6,68 @@ from playwright.sync_api import Locator, Page
 def scroll_to_profile_section(
     page: Page,
 ) -> None:
-    """
-    Scroll đến section Highlights để trigger
-    sticky profile navigation của LinkedIn.
-    """
-
-    highlights = page.get_by_text(
+    targets = (
+        "Experience",
+        "Activity",
+        "Education",
         "Highlights",
-        exact=True,
-    ).first
-
-    highlights.wait_for(
-        state="visible",
-        timeout=15_000,
     )
+
+    target = None
+    target_name = None
+
+    for name in targets:
+        locator = page.get_by_text(
+            name,
+            exact=True,
+        ).first
+
+        try:
+            if locator.count() > 0:
+                target = locator
+                target_name = name
+                break
+        except Exception:
+            continue
+
+    if target is None:
+        raise RuntimeError(
+            "Could not find a profile section "
+            "to scroll to."
+        )
 
     print("")
     print("==============================")
     print("SCROLL TARGET FOUND")
     print("==============================")
-    print("Target: Highlights")
+    print(f"Target: {target_name}")
     print("")
 
-    highlights.scroll_into_view_if_needed()
+    target.evaluate(
+        """
+        element => {
+            const rect = element.getBoundingClientRect();
+
+            window.scrollTo({
+                top: window.scrollY + rect.top - 150,
+                behavior: "auto"
+            });
+        }
+        """
+    )
 
     page.wait_for_timeout(
-        1_000
+        1_500
     )
+
+    current_scroll = page.evaluate(
+        "window.scrollY"
+    )
+
+    print(
+        f"Current scrollY: {current_scroll}"
+    )
+    print("")
 
 
 def find_nav_message_action(
