@@ -3,12 +3,16 @@ from __future__ import annotations
 from playwright.sync_api import Locator, Page
 
 
+# =========================================================
+# FIND MESSAGE ACTION
+# =========================================================
+
 def find_profile_message_action(
     page: Page,
 ) -> Locator:
     """
     Find the clickable Message action
-    from the main LinkedIn profile header.
+    in the LinkedIn profile header.
     """
 
     message_icon = page.locator(
@@ -49,6 +53,128 @@ def find_profile_message_action(
     )
 
 
+# =========================================================
+# SALES NAVIGATOR POPUP
+# =========================================================
+
+def close_sales_navigator_popup(
+    page: Page,
+) -> bool:
+    """
+    Detect the Sales Navigator promo popup.
+
+    Return:
+        True  -> popup found and closed
+        False -> popup not present
+    """
+
+    popup_text = page.get_by_text(
+        "Try Sales Navigator",
+        exact=False,
+    )
+
+    try:
+        popup_text.first.wait_for(
+            state="visible",
+            timeout=2_500,
+        )
+
+    except Exception:
+        return False
+
+    print("")
+    print("==============================")
+    print("SALES NAVIGATOR POPUP FOUND")
+    print("==============================")
+    print("Closing popup...")
+    print("")
+
+    # ---------------------------------------------
+    # Find the popup container first.
+    # ---------------------------------------------
+
+    popup_container = (
+        popup_text
+        .first
+        .locator(
+            "xpath=ancestor::div["
+            ".//button or .//*[@role='button']"
+            "][1]"
+        )
+    )
+
+    close_button = None
+
+    # ---------------------------------------------
+    # Case 1 — accessible Close button
+    # ---------------------------------------------
+
+    possible_close = page.get_by_role(
+        "button",
+        name="Close",
+        exact=False,
+    )
+
+    if possible_close.count() > 0:
+        close_button = (
+            possible_close
+            .filter(
+                visible=True
+            )
+            .first
+        )
+
+    # ---------------------------------------------
+    # Case 2 — aria-label close
+    # ---------------------------------------------
+
+    if close_button is None:
+        possible_close = page.locator(
+            'button[aria-label*="close" i]'
+        )
+
+        if possible_close.count() > 0:
+            close_button = possible_close.first
+
+    # ---------------------------------------------
+    # Case 3 — role button inside popup container
+    # Use the top-right button.
+    # ---------------------------------------------
+
+    if close_button is None:
+        popup_buttons = popup_container.locator(
+            'button, [role="button"]'
+        )
+
+        if popup_buttons.count() > 0:
+            close_button = popup_buttons.first
+
+    if close_button is None:
+        raise RuntimeError(
+            "Sales Navigator popup appeared "
+            "but close button was not found."
+        )
+
+    close_button.click(
+        force=True,
+    )
+
+    page.wait_for_timeout(
+        800
+    )
+
+    print("==============================")
+    print("SALES NAVIGATOR POPUP CLOSED")
+    print("==============================")
+    print("")
+
+    return True
+
+
+# =========================================================
+# OPEN MESSAGE COMPOSER
+# =========================================================
+
 def open_message_composer(
     page: Page,
 ) -> None:
@@ -76,15 +202,60 @@ def open_message_composer(
 
     message_action.scroll_into_view_if_needed()
 
+    # =====================================================
+    # FIRST CLICK
+    # =====================================================
+
+    print("Clicking Message...")
+
     message_action.click(
-        force=True
+        force=True,
     )
 
     page.wait_for_timeout(
-        2_000
+        1_000
     )
 
+    # =====================================================
+    # CHECK SALES NAVIGATOR PROMO
+    # =====================================================
+
+    popup_was_closed = (
+        close_sales_navigator_popup(
+            page
+        )
+    )
+
+    # =====================================================
+    # SECOND CLICK ONLY IF POPUP APPEARED
+    # =====================================================
+
+    if popup_was_closed:
+        print(
+            "Clicking Message again "
+            "after closing popup..."
+        )
+
+        page.wait_for_timeout(
+            500
+        )
+
+        message_action = (
+            find_profile_message_action(
+                page
+            )
+        )
+
+        message_action.click(
+            force=True,
+        )
+
+        page.wait_for_timeout(
+            1_500
+        )
+
+    print("")
     print("==============================")
-    print("MESSAGE ACTION CLICKED")
+    print("MESSAGE ACTION COMPLETED")
     print("==============================")
     print("")
