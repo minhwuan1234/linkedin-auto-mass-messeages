@@ -15,6 +15,15 @@ INPUT_FILE = (
 )
 
 
+LINKEDIN_LOGIN_URL_PARTS = (
+    "/login",
+    "/checkpoint",
+    "/challenge",
+    "/authwall",
+    "/uas/login",
+)
+
+
 def load_urls() -> list[str]:
     if not INPUT_FILE.exists():
         raise FileNotFoundError(
@@ -43,6 +52,54 @@ def load_urls() -> list[str]:
     return urls
 
 
+def requires_login(
+    current_url: str,
+) -> bool:
+    url = (
+        current_url
+        or ""
+    ).lower()
+
+    return any(
+        part in url
+        for part in LINKEDIN_LOGIN_URL_PARTS
+    )
+
+
+def wait_for_manual_login(
+    browser: LinkedInBrowser,
+    target_url: str,
+) -> None:
+    page = browser.page
+
+    print("")
+    print("==============================")
+    print("LINKEDIN LOGIN REQUIRED")
+    print("==============================")
+    print("")
+    print("Login manually in the browser.")
+    print(
+        "Complete verification if LinkedIn asks."
+    )
+    print(
+        "Wait until you can see the LinkedIn feed."
+    )
+    print("")
+
+    input(
+        "When login is finished, "
+        "press ENTER here..."
+    )
+
+    print("")
+    print("Opening target profile again...")
+    print("")
+
+    browser.open(
+        target_url
+    )
+
+
 def main() -> None:
     urls = load_urls()
 
@@ -57,9 +114,58 @@ def main() -> None:
     print("==============================")
     print("PROFILE NAME TEST")
     print("==============================")
-    print(f"URL: {test_url}")
+    print(
+        f"URL: {test_url}"
+    )
     print("")
 
+    browser = LinkedInBrowser()
+
+    try:
+        browser.start()
+
+        page = browser.open(
+            test_url
+        )
+
+        if requires_login(
+            page.url
+        ):
+            wait_for_manual_login(
+                browser,
+                test_url,
+            )
+
+            page = browser.page
+
+        profile = get_profile_name(
+            page
+        )
+
+        print("")
+        print("==============================")
+        print("PROFILE FOUND")
+        print("==============================")
+        print(
+            f"Full name : "
+            f"{profile['full_name']}"
+        )
+        print(
+            f"First name: "
+            f"{profile['first_name']}"
+        )
+        print("")
+
+        input(
+            "Press ENTER to close browser..."
+        )
+
+    finally:
+        browser.stop()
+
+
+if __name__ == "__main__":
+    main()
     browser = LinkedInBrowser()
 
     try:
