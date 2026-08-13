@@ -3,6 +3,28 @@ from __future__ import annotations
 from playwright.sync_api import Locator, Page
 
 
+def scroll_to_middle_of_profile(
+    page: Page,
+) -> None:
+    """
+    Scroll xuống giữa trang để LinkedIn
+    hiện sticky profile navigation bar.
+    """
+
+    page.evaluate(
+        """
+        window.scrollTo({
+            top: document.body.scrollHeight * 0.45,
+            behavior: "instant"
+        });
+        """
+    )
+
+    page.wait_for_timeout(
+        1_000
+    )
+
+
 def find_nav_message_action(
     page: Page,
 ) -> Locator:
@@ -11,14 +33,8 @@ def find_nav_message_action(
     sticky profile navigation bar.
     """
 
-    # Scroll xuống để sticky profile navigation xuất hiện.
-    page.mouse.wheel(
-        0,
-        500,
-    )
-
-    page.wait_for_timeout(
-        800
+    scroll_to_middle_of_profile(
+        page
     )
 
     candidates = page.locator(
@@ -31,15 +47,17 @@ def find_nav_message_action(
         candidate = candidates.nth(index)
 
         try:
-            if candidate.is_visible():
-                text = (
-                    candidate
-                    .inner_text()
-                    .strip()
-                )
+            if not candidate.is_visible():
+                continue
 
-                if "Message" in text:
-                    return candidate
+            text = (
+                candidate
+                .inner_text()
+                .strip()
+            )
+
+            if "Message" in text:
+                return candidate
 
         except Exception:
             continue
@@ -54,9 +72,18 @@ def open_message_composer(
     page: Page,
 ) -> None:
     """
-    Open LinkedIn Message composer using
-    the Message action in the sticky profile nav.
+    Scroll profile, find sticky-nav Message action,
+    then open the LinkedIn message composer.
     """
+
+    print("")
+    print("==============================")
+    print("SCROLLING PROFILE")
+    print("==============================")
+    print(
+        "Scrolling to middle of profile "
+        "to reveal sticky navigation..."
+    )
 
     message_action = find_nav_message_action(
         page
@@ -85,6 +112,10 @@ def open_message_composer(
     print("")
 
     message_action.scroll_into_view_if_needed()
+
+    page.wait_for_timeout(
+        300
+    )
 
     print(
         "Clicking Message from sticky nav..."
