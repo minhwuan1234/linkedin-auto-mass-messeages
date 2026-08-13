@@ -3,7 +3,7 @@ from pathlib import Path
 from app.browser import LinkedInBrowser
 from app.message_template import build_message
 from app.profile import get_profile_name
-from app.message_sender import open_message_composer
+from app.message_sender import send_message
 
 PROJECT_ROOT = Path(
     __file__
@@ -158,12 +158,13 @@ def main() -> None:
         input(
             "Press ENTER to close browser..."
         )
-        open_message_composer(
-        page
+        send_message(
+            page,
+            message,
         )
 
         input(
-            "Check that the correct Message composer is open. "
+            "Message flow finished. "
             "Press ENTER to close browser..."
         )
 
