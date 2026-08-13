@@ -3,38 +3,99 @@ from __future__ import annotations
 from playwright.sync_api import Locator, Page
 
 
-MAX_MESSAGE_ATTEMPTS = 5
-
-
-# =========================================================
-# FIND MESSAGE ACTION
-# =========================================================
-
-def find_profile_message_action(
+def find_nav_message_action(
     page: Page,
 ) -> Locator:
     """
-    Find the clickable Message action
-    in the LinkedIn profile header.
+    Find the Message action in LinkedIn's
+    sticky profile navigation/header.
+
+    Current LinkedIn DOM uses an <a> whose href contains:
+        recipient=
+        interop=msgOverlay
     """
 
-    message_icon = page.locator(
-        'svg#send-privately-medium'
-    ).first
-
-    message_icon.wait_for(
-        state="visible",
-        timeout=15_000,
+    # Scroll a little so LinkedIn's sticky profile bar
+    # has a chance to appear.
+    page.mouse.wheel(
+        0,
+        500,
     )
 
-    clickable_parent = message_icon.locator(
-        'xpath=ancestor::*['
-        '@role="button" '
-        'or self::button '
-        'or self::a'
-        '][1]'
+    page.wait_for_timeout(
+        800
     )
 
+    candidates = page.locator(
+        'a[href*="recipient="][href*="interop=msgOverlay"]'
+    )
+
+    for index in range(
+        candidates.count()
+    ):
+        candidate = candidates.nth(
+            index
+        )
+
+        try:
+            if candidate.is_visible():
+                return candidate
+
+        except Exception:
+            continue
+
+    raise RuntimeError(
+        "Could not find Message action "
+        "in sticky profile navigation."
+    )
+
+
+def open_message_composer(
+    page: Page,
+) -> None:
+    message_action = find_nav_message_action(
+        page
+    )
+
+    text = (
+        message_action
+        .inner_text()
+        .strip()
+    )
+
+    href = (
+        message_action
+        .get_attribute(
+            "href"
+        )
+        or ""
+    )
+
+    print("")
+    print("==============================")
+    print("NAV MESSAGE ACTION FOUND")
+    print("==============================")
+    print(f"Text: {text}")
+    print(f"Href: {href}")
+    print("")
+
+    message_action.scroll_into_view_if_needed()
+
+    print(
+        "Clicking Message from sticky nav..."
+    )
+
+    message_action.click()
+
+    page.wait_for_timeout(
+        1_500
+    )
+
+    print("")
+    print("==============================")
+    print("NAV MESSAGE ACTION CLICKED")
+    print("==============================")
+    print("")
     if clickable_parent.count() > 0:
         return clickable_parent.first
 
