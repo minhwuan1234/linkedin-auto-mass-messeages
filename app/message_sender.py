@@ -6,35 +6,58 @@ from playwright.sync_api import (
 )
 
 
-def find_profile_message_button(
+def find_profile_message_action(
     page: Page,
 ) -> Locator:
-    top_card = page.locator(
-        'div[data-testid="lazy-column"]'
+    """
+    Find the Message action in the main LinkedIn profile header.
+
+    LinkedIn hiện tại render Message bằng một action wrapper
+    chứa SVG:
+
+        id="send-privately-medium"
+
+    Không assume đây là <button>.
+    """
+
+    message_icon = page.locator(
+        'svg#send-privately-medium'
     ).first
 
-    message_button = (
-        top_card
-        .get_by_role(
-            "button",
-            name="Message",
-            exact=True,
-        )
-        .first
-    )
-
-    message_button.wait_for(
+    message_icon.wait_for(
         state="visible",
         timeout=15_000,
     )
 
-    return message_button
+    return message_icon
 
 
 def open_message_composer(
     page: Page,
 ) -> None:
-    message_button = (
+    message_icon = (
+        find_profile_message_action(
+            page
+        )
+    )
+
+    print("")
+    print("==============================")
+    print("MESSAGE ACTION FOUND")
+    print("==============================")
+    print("Clicking profile Message action...")
+    print("")
+
+    message_icon.click()
+
+    page.wait_for_timeout(
+        1_500
+    )
+
+    print("==============================")
+    print("MESSAGE ACTION CLICKED")
+    print("==============================")
+    print("")    message_button = (
         find_profile_message_button(
             page
         )
