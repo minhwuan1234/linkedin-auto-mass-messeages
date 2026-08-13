@@ -9,13 +9,6 @@ from playwright.sync_api import (
 def find_profile_message_action(
     page: Page,
 ) -> Locator:
-    """
-    Find the Message action in the main LinkedIn profile header.
-
-    LinkedIn hiện tại render Message action với SVG:
-        id="send-privately-medium"
-    """
-
     message_icon = page.locator(
         'svg#send-privately-medium'
     ).first
@@ -25,16 +18,76 @@ def find_profile_message_action(
         timeout=15_000,
     )
 
-    return message_icon
+    clickable_parent = message_icon.locator(
+        'xpath=ancestor::*['
+        '@role="button" '
+        'or self::button '
+        'or self::a'
+        '][1]'
+    )
+
+    if clickable_parent.count() > 0:
+        return clickable_parent.first
+
+    # Fallback:
+    # LinkedIn đôi khi dùng generic wrapper thay vì button/a.
+    parent = message_icon.locator(
+        "xpath=.."
+    )
+
+    parent_text = (
+        parent
+        .inner_text()
+        .strip()
+    )
+
+    if "Message" in parent_text:
+        return parent
+
+    raise RuntimeError(
+        "Could not find clickable Message action."
+    )
 
 
 def open_message_composer(
     page: Page,
 ) -> None:
-    message_icon = (
+    message_action = (
         find_profile_message_action(
             page
         )
+    )
+
+    print("")
+    print("==============================")
+    print("MESSAGE ACTION FOUND")
+    print("==============================")
+    print(
+        "Tag:",
+        message_action.evaluate(
+            "(el) => el.tagName"
+        ),
+    )
+    print(
+        "Text:",
+        message_action.inner_text(),
+    )
+    print("")
+
+    message_action.scroll_into_view_if_needed()
+
+    message_action.click(
+        force=True,
+    )
+
+    page.wait_for_timeout(
+        2_000
+    )
+
+    print("==============================")
+    print("MESSAGE ACTION CLICKED")
+    print("==============================")
+    print("")        )
     )
 
     print("")
