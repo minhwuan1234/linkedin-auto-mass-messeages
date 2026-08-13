@@ -2,6 +2,7 @@ from pathlib import Path
 
 from app.browser import LinkedInBrowser
 from app.profile import get_profile_name
+from app.message_template import build_message
 
 
 PROJECT_ROOT = Path(
@@ -141,6 +142,9 @@ def main() -> None:
         profile = get_profile_name(
             page
         )
+            message = build_message(
+            profile["first_name"]
+        )
 
         print("")
         print("==============================")
@@ -159,6 +163,11 @@ def main() -> None:
         input(
             "Press ENTER to close browser..."
         )
+        print("==============================")
+        print("MESSAGE PREVIEW")
+        print("==============================")
+        print(message)
+        print("")
 
     finally:
         browser.stop()
