@@ -105,4 +105,75 @@ class LinkedInBrowser:
 
         self._page = None
         self._context = None
+        self._playwright = None        return self._page
+
+    def start(self) -> Page:
+        PROFILE_DIR.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        self._playwright = (
+            sync_playwright()
+            .start()
+        )
+
+        self._context = (
+            self._playwright
+            .chromium
+            .launch_persistent_context(
+                user_data_dir=str(
+                    PROFILE_DIR
+                ),
+                headless=False,
+                viewport={
+                    "width": 1440,
+                    "height": 1000,
+                },
+                locale="en-US",
+            )
+        )
+
+        if self._context.pages:
+            self._page = (
+                self._context.pages[0]
+            )
+        else:
+            self._page = (
+                self._context.new_page()
+            )
+
+        self._page.set_default_timeout(
+            15_000
+        )
+
+        self._page.set_default_navigation_timeout(
+            45_000
+        )
+
+        return self._page
+
+    def open(self, url: str) -> Page:
+        page = self.page
+
+        page.goto(
+            url,
+            wait_until="domcontentloaded",
+        )
+
+        page.wait_for_timeout(
+            1000
+        )
+
+        return page
+
+    def stop(self) -> None:
+        if self._context is not None:
+            self._context.close()
+
+        if self._playwright is not None:
+            self._playwright.stop()
+
+        self._page = None
+        self._context = None
         self._playwright = None
