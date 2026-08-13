@@ -12,12 +12,8 @@ def find_profile_message_action(
     """
     Find the Message action in the main LinkedIn profile header.
 
-    LinkedIn hiện tại render Message bằng một action wrapper
-    chứa SVG:
-
+    LinkedIn hiện tại render Message action với SVG:
         id="send-privately-medium"
-
-    Không assume đây là <button>.
     """
 
     message_icon = page.locator(
@@ -56,21 +52,5 @@ def open_message_composer(
 
     print("==============================")
     print("MESSAGE ACTION CLICKED")
-    print("==============================")
-    print("")    message_button = (
-        find_profile_message_button(
-            page
-        )
-    )
-
-    message_button.click()
-
-    page.wait_for_timeout(
-        1_000
-    )
-
-    print("")
-    print("==============================")
-    print("MESSAGE COMPOSER OPENED")
     print("==============================")
     print("")
