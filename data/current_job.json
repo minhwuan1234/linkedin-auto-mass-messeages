@@ -11,13 +11,13 @@
   "sent": 1,
   "failed": 0,
   "current": {
-    "index": 1,
+    "index": 2,
     "total": 2,
-    "url": "https://www.linkedin.com/in/tony-tran-17b768290/",
-    "full_name": "Tony Tran",
-    "first_name": "Tony",
-    "status": "sent",
-    "step": "completed",
+    "url": "https://www.linkedin.com/in/frank-nguyen-flearningstudio/",
+    "full_name": "",
+    "first_name": "",
+    "status": "processing",
+    "step": "opening_profile",
     "error": ""
   },
   "results": [
@@ -38,5 +38,5 @@
   "started_at": "2026-08-14T03:49:28.592312+00:00",
   "completed_at": null,
   "worker_id": "Justin.local-74976",
-  "updated_at": "2026-08-14T03:49:47.331843+00:00"
+  "updated_at": "2026-08-14T03:49:48.578205+00:00"
 }
