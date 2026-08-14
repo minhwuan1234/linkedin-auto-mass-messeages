@@ -127,6 +127,99 @@ def fill_message(
     print("MESSAGE FILLED")
     print("==============================")
     print(cleaned_message)
+    print("")    )
+
+    if "Message" in parent_text:
+        return parent
+
+    raise RuntimeError(
+        "Profile Message action not found."
+    )
+
+
+def open_message_composer(
+    page: Page,
+) -> None:
+    message_action = find_profile_message_action(
+        page
+    )
+
+    print("")
+    print("==============================")
+    print("MESSAGE ACTION FOUND")
+    print("==============================")
+    print("Clicking Message...")
+    print("")
+
+    message_action.click(
+        force=True
+    )
+
+    page.wait_for_timeout(
+        1_500
+    )
+
+
+def find_message_textbox(
+    page: Page,
+) -> Locator:
+    candidates = page.locator(
+        '[contenteditable="true"]'
+    )
+
+    for index in range(
+        candidates.count()
+    ):
+        candidate = candidates.nth(
+            index
+        )
+
+        try:
+            if candidate.is_visible():
+                return candidate
+
+        except Exception:
+            continue
+
+    raise RuntimeError(
+        "Message textbox not found."
+    )
+
+
+def fill_message(
+    page: Page,
+    message: str,
+) -> None:
+    cleaned_message = message.strip()
+
+    if not cleaned_message:
+        raise ValueError(
+            "Message cannot be empty."
+        )
+
+    open_message_composer(
+        page
+    )
+
+    textbox = find_message_textbox(
+        page
+    )
+
+    textbox.click()
+
+    textbox.fill(
+        cleaned_message
+    )
+
+    page.wait_for_timeout(
+        500
+    )
+
+    print("")
+    print("==============================")
+    print("MESSAGE FILLED")
+    print("==============================")
+    print(cleaned_message)
     print("")from __future__ import annotations
 
 from playwright.sync_api import Locator, Page
