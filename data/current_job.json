@@ -11,13 +11,13 @@
   "sent": 0,
   "failed": 0,
   "current": {
-    "index": 0,
+    "index": 1,
     "total": 2,
-    "url": "",
+    "url": "https://www.linkedin.com/in/tony-tran-17b768290/",
     "full_name": "",
     "first_name": "",
-    "status": "running",
-    "step": "browser_ready",
+    "status": "processing",
+    "step": "opening_profile",
     "error": ""
   },
   "results": [],
@@ -26,5 +26,5 @@
   "started_at": "2026-08-14T03:49:28.592312+00:00",
   "completed_at": null,
   "worker_id": "Justin.local-74976",
-  "updated_at": "2026-08-14T03:49:32.200992+00:00"
+  "updated_at": "2026-08-14T03:49:33.247133+00:00"
 }
