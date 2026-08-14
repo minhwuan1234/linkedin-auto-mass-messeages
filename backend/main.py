@@ -16,17 +16,11 @@ from pydantic import BaseModel
 
 
 # =========================================================
-# PROJECT PATHS
+# PATHS
 # =========================================================
 
-PROJECT_ROOT = Path(
-    __file__
-).resolve().parent.parent
-
-FRONTEND_DIR = (
-    PROJECT_ROOT
-    / "frontend"
-)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+FRONTEND_DIR = PROJECT_ROOT / "frontend"
 
 
 # =========================================================
@@ -53,6 +47,11 @@ GITHUB_JOB_PATH = os.getenv(
     "data/current_job.json",
 ).strip()
 
+GITHUB_CONTACTS_PATH = os.getenv(
+    "GITHUB_CONTACTS_PATH",
+    "data/contacts.json",
+).strip()
+
 
 # =========================================================
 # APP
@@ -64,32 +63,23 @@ app = FastAPI(
 
 
 # =========================================================
-# REQUEST MODEL
+# REQUEST
 # =========================================================
 
-class StartMessageRequest(
-    BaseModel
-):
+class StartMessageRequest(BaseModel):
     urls: list[str]
     template: str
 
 
 # =========================================================
-# TIME
+# UTILS
 # =========================================================
 
 def utc_now_iso() -> str:
-    return (
-        datetime.now(
-            timezone.utc
-        )
-        .isoformat()
-    )
+    return datetime.now(
+        timezone.utc
+    ).isoformat()
 
-
-# =========================================================
-# GITHUB HEADERS
-# =========================================================
 
 def github_headers() -> dict[str, str]:
     if not GITHUB_TOKEN:
@@ -98,37 +88,30 @@ def github_headers() -> dict[str, str]:
         )
 
     return {
-        "Authorization": (
-            f"Bearer {GITHUB_TOKEN}"
-        ),
-        "Accept": (
-            "application/vnd.github+json"
-        ),
-        "X-GitHub-Api-Version": (
-            "2022-11-28"
-        ),
+        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
     }
 
 
-# =========================================================
-# GITHUB URL
-# =========================================================
-
-def github_contents_url() -> str:
+def github_contents_url(
+    path: str,
+) -> str:
     return (
         "https://api.github.com/repos/"
-        f"{GITHUB_REPO}/contents/"
-        f"{GITHUB_JOB_PATH}"
+        f"{GITHUB_REPO}/contents/{path}"
     )
 
 
 # =========================================================
-# READ CURRENT JOB
+# GENERIC GITHUB JSON READ
 # =========================================================
 
-def read_job_from_github() -> dict[str, Any] | None:
+def read_json_file(
+    path: str,
+) -> tuple[Any | None, str]:
     response = requests.get(
-        github_contents_url(),
+        github_contents_url(path),
         headers=github_headers(),
         params={
             "ref": GITHUB_BRANCH,
@@ -136,212 +119,109 @@ def read_job_from_github() -> dict[str, Any] | None:
         timeout=20,
     )
 
-    # -----------------------------------------------------
-    # File does not exist = no current job
-    # -----------------------------------------------------
-
     if response.status_code == 404:
-        return None
+        return None, ""
 
     if response.status_code != 200:
         raise RuntimeError(
-            "Could not read job from GitHub. "
+            f"Could not read {path}. "
             f"Status: {response.status_code}. "
             f"Response: {response.text}"
         )
 
     payload = response.json()
 
+    sha = str(
+        payload.get("sha", "")
+        or ""
+    )
+
     encoded_content = str(
-        payload.get(
-            "content",
-            "",
-        )
+        payload.get("content", "")
         or ""
     )
 
     encoded_content = (
         encoded_content
-        .replace(
-            "\n",
-            "",
-        )
+        .replace("\n", "")
         .strip()
     )
 
-    # -----------------------------------------------------
-    # GitHub file exists but content field is empty
-    # -----------------------------------------------------
-
     if not encoded_content:
-        return None
+        return None, sha
 
     try:
         decoded = (
             base64.b64decode(
                 encoded_content
             )
-            .decode(
-                "utf-8"
-            )
+            .decode("utf-8")
+            .strip()
         )
 
     except Exception as exc:
         raise RuntimeError(
-            "Could not decode GitHub job file."
+            f"Could not decode {path}."
         ) from exc
 
-    decoded = decoded.strip()
-
-    # -----------------------------------------------------
-    # File itself contains blank text such as "\n"
-    # -----------------------------------------------------
-
     if not decoded:
-        return None
-
-    # -----------------------------------------------------
-    # Parse JSON safely
-    # -----------------------------------------------------
+        return None, sha
 
     try:
-        job = json.loads(
+        data = json.loads(
             decoded
         )
 
     except json.JSONDecodeError as exc:
         raise RuntimeError(
-            "GitHub job file contains invalid JSON. "
-            f"Path: {GITHUB_JOB_PATH}"
+            f"{path} contains invalid JSON."
         ) from exc
 
-    if not isinstance(
-        job,
-        dict,
-    ):
-        raise RuntimeError(
-            "GitHub job file must contain "
-            "a JSON object."
-        )
-
-    job["_github_sha"] = str(
-        payload.get(
-            "sha",
-            "",
-        )
-        or ""
-    )
-
-    return job
+    return data, sha
 
 
 # =========================================================
-# WRITE CURRENT JOB
+# GENERIC GITHUB JSON WRITE
 # =========================================================
 
-def write_job_to_github(
-    job: dict[str, Any],
+def write_json_file(
+    path: str,
+    data: Any,
     *,
     commit_message: str,
 ) -> None:
-    existing_job = (
-        read_job_from_github()
+    _, existing_sha = (
+        read_json_file(path)
     )
 
-    existing_sha = ""
-
-    if existing_job is not None:
-        existing_sha = str(
-            existing_job.get(
-                "_github_sha",
-                "",
-            )
-            or ""
-        ).strip()
-
-    # -----------------------------------------------------
-    # Important:
-    #
-    # If file exists but is blank, read_job_from_github()
-    # returns None, but GitHub still requires SHA to update.
-    #
-    # So query the raw file metadata again when necessary.
-    # -----------------------------------------------------
-
-    if not existing_sha:
-        metadata_response = requests.get(
-            github_contents_url(),
-            headers=github_headers(),
-            params={
-                "ref": GITHUB_BRANCH,
-            },
-            timeout=20,
-        )
-
-        if metadata_response.status_code == 200:
-            metadata = (
-                metadata_response.json()
-            )
-
-            existing_sha = str(
-                metadata.get(
-                    "sha",
-                    "",
-                )
-                or ""
-            ).strip()
-
-        elif metadata_response.status_code != 404:
-            raise RuntimeError(
-                "Could not inspect existing GitHub "
-                "job file. "
-                f"Status: "
-                f"{metadata_response.status_code}. "
-                f"Response: "
-                f"{metadata_response.text}"
-            )
-
-    clean_job = {
-        key: value
-        for key, value in job.items()
-        if not key.startswith(
-            "_github_"
-        )
-    }
-
     raw_json = json.dumps(
-        clean_job,
+        data,
         ensure_ascii=False,
         indent=2,
     )
 
     encoded_content = (
         base64.b64encode(
-            raw_json.encode(
-                "utf-8"
-            )
+            raw_json.encode("utf-8")
         )
-        .decode(
-            "ascii"
-        )
+        .decode("ascii")
     )
 
-    request_payload: dict[str, Any] = {
+    payload: dict[str, Any] = {
         "message": commit_message,
         "content": encoded_content,
         "branch": GITHUB_BRANCH,
     }
 
-    # Existing GitHub file → SHA required.
     if existing_sha:
-        request_payload["sha"] = (
+        payload["sha"] = (
             existing_sha
         )
 
     response = requests.put(
-        github_contents_url(),
+        github_contents_url(path),
         headers=github_headers(),
-        json=request_payload,
+        json=payload,
         timeout=20,
     )
 
@@ -350,10 +230,128 @@ def write_job_to_github(
         201,
     }:
         raise RuntimeError(
-            "Could not write job to GitHub. "
+            f"Could not write {path}. "
             f"Status: {response.status_code}. "
             f"Response: {response.text}"
         )
+
+
+# =========================================================
+# JOB
+# =========================================================
+
+def read_job() -> dict[str, Any] | None:
+    data, sha = read_json_file(
+        GITHUB_JOB_PATH
+    )
+
+    if data is None:
+        return None
+
+    if not isinstance(
+        data,
+        dict,
+    ):
+        raise RuntimeError(
+            "Current job must be a JSON object."
+        )
+
+    data["_github_sha"] = sha
+
+    return data
+
+
+def write_job(
+    job: dict[str, Any],
+    *,
+    commit_message: str,
+) -> None:
+    clean_job = {
+        key: value
+        for key, value in job.items()
+        if not key.startswith("_github_")
+    }
+
+    write_json_file(
+        GITHUB_JOB_PATH,
+        clean_job,
+        commit_message=commit_message,
+    )
+
+
+# =========================================================
+# CONTACTS
+# =========================================================
+
+def read_contacts() -> list[dict[str, Any]]:
+    data, _ = read_json_file(
+        GITHUB_CONTACTS_PATH
+    )
+
+    if data is None:
+        return []
+
+    if not isinstance(
+        data,
+        list,
+    ):
+        raise RuntimeError(
+            "contacts.json must contain a JSON array."
+        )
+
+    return data
+
+
+def queue_contacts(
+    urls: list[str],
+    job_id: str,
+) -> None:
+    contacts = read_contacts()
+
+    now = utc_now_iso()
+
+    by_url = {
+        str(item.get("url", "")): item
+        for item in contacts
+        if item.get("url")
+    }
+
+    for url in urls:
+        existing = by_url.get(url)
+
+        if existing:
+            existing["status"] = "queued"
+            existing["last_job_id"] = job_id
+            existing["error"] = ""
+            existing["updated_at"] = now
+
+        else:
+            contact = {
+                "url": url,
+                "full_name": "",
+                "first_name": "",
+                "status": "queued",
+                "message": "",
+                "last_job_id": job_id,
+                "sent_at": None,
+                "error": "",
+                "created_at": now,
+                "updated_at": now,
+            }
+
+            contacts.append(
+                contact
+            )
+
+            by_url[url] = contact
+
+    write_json_file(
+        GITHUB_CONTACTS_PATH,
+        contacts,
+        commit_message=(
+            f"Queue contacts for job {job_id}"
+        ),
+    )
 
 
 # =========================================================
@@ -377,19 +375,14 @@ def normalize_urls(
         if url in seen:
             continue
 
-        seen.add(
-            url
-        )
-
-        clean_urls.append(
-            url
-        )
+        seen.add(url)
+        clean_urls.append(url)
 
     return clean_urls
 
 
 # =========================================================
-# IDLE STATE
+# IDLE
 # =========================================================
 
 def idle_state() -> dict[str, Any]:
@@ -407,7 +400,7 @@ def idle_state() -> dict[str, Any]:
 
 
 # =========================================================
-# CREATE NEW MESSAGE JOB
+# START JOB
 # =========================================================
 
 @app.post(
@@ -421,33 +414,22 @@ def start_messages(
     )
 
     template = str(
-        request.template
-        or ""
+        request.template or ""
     ).strip()
-
-    # -----------------------------------------------------
-    # Validate URLs
-    # -----------------------------------------------------
 
     if not clean_urls:
         raise HTTPException(
             status_code=400,
             detail=(
-                "At least one LinkedIn URL "
-                "is required."
+                "At least one LinkedIn URL is required."
             ),
         )
-
-    # -----------------------------------------------------
-    # Validate template
-    # -----------------------------------------------------
 
     if not template:
         raise HTTPException(
             status_code=400,
             detail=(
-                "Message template "
-                "cannot be empty."
+                "Message template cannot be empty."
             ),
         )
 
@@ -455,29 +437,21 @@ def start_messages(
         raise HTTPException(
             status_code=400,
             detail=(
-                "Message template must "
-                "contain {first_name}."
+                "Message template must contain "
+                "{first_name}."
             ),
         )
 
-    # -----------------------------------------------------
-    # Check current job
-    # -----------------------------------------------------
-
     try:
-        current_job = (
-            read_job_from_github()
-        )
+        current_job = read_job()
 
     except Exception as exc:
         raise HTTPException(
             status_code=500,
-            detail=str(
-                exc
-            ),
+            detail=str(exc),
         ) from exc
 
-    if current_job is not None:
+    if current_job:
         current_status = str(
             current_job.get(
                 "status",
@@ -494,14 +468,9 @@ def start_messages(
             raise HTTPException(
                 status_code=409,
                 detail=(
-                    "A messaging job "
-                    "is already active."
+                    "A messaging job is already active."
                 ),
             )
-
-    # -----------------------------------------------------
-    # Build new job
-    # -----------------------------------------------------
 
     job_id = str(
         uuid4()
@@ -509,18 +478,14 @@ def start_messages(
 
     now = utc_now_iso()
 
-    job: dict[str, Any] = {
+    job = {
         "job_id": job_id,
-
         "status": "pending",
 
         "urls": clean_urls,
-
         "template": template,
 
-        "total": len(
-            clean_urls
-        ),
+        "total": len(clean_urls),
 
         "processed": 0,
         "sent": 0,
@@ -533,9 +498,7 @@ def start_messages(
         "error": "",
 
         "created_at": now,
-
         "started_at": None,
-
         "completed_at": None,
 
         "worker_id": None,
@@ -543,12 +506,13 @@ def start_messages(
         "updated_at": now,
     }
 
-    # -----------------------------------------------------
-    # Write job to GitHub
-    # -----------------------------------------------------
-
     try:
-        write_job_to_github(
+        queue_contacts(
+            clean_urls,
+            job_id,
+        )
+
+        write_job(
             job,
             commit_message=(
                 f"Create message job {job_id}"
@@ -558,23 +522,19 @@ def start_messages(
     except Exception as exc:
         raise HTTPException(
             status_code=500,
-            detail=str(
-                exc
-            ),
+            detail=str(exc),
         ) from exc
 
     return {
         "ok": True,
         "job_id": job_id,
         "status": "pending",
-        "total": len(
-            clean_urls
-        ),
+        "total": len(clean_urls),
     }
 
 
 # =========================================================
-# CURRENT JOB STATUS
+# JOB STATUS
 # =========================================================
 
 @app.get(
@@ -582,16 +542,12 @@ def start_messages(
 )
 def message_status() -> dict[str, Any]:
     try:
-        job = (
-            read_job_from_github()
-        )
+        job = read_job()
 
     except Exception as exc:
         raise HTTPException(
             status_code=500,
-            detail=str(
-                exc
-            ),
+            detail=str(exc),
         ) from exc
 
     if job is None:
@@ -603,6 +559,43 @@ def message_status() -> dict[str, Any]:
     )
 
     return job
+
+
+# =========================================================
+# CONTACT LIST
+# =========================================================
+
+@app.get(
+    "/api/contacts"
+)
+def contact_list() -> dict[str, Any]:
+    try:
+        contacts = (
+            read_contacts()
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=str(exc),
+        ) from exc
+
+    contacts = sorted(
+        contacts,
+        key=lambda item: (
+            item.get(
+                "updated_at",
+                "",
+            )
+            or ""
+        ),
+        reverse=True,
+    )
+
+    return {
+        "total": len(contacts),
+        "contacts": contacts,
+    }
 
 
 # =========================================================
@@ -621,6 +614,9 @@ def health() -> dict[str, Any]:
         "github_repo": GITHUB_REPO,
         "github_branch": GITHUB_BRANCH,
         "github_job_path": GITHUB_JOB_PATH,
+        "github_contacts_path": (
+            GITHUB_CONTACTS_PATH
+        ),
     }
 
 
@@ -635,10 +631,6 @@ def frontend() -> FileResponse:
         / "index.html"
     )
 
-
-# =========================================================
-# STATIC FILES
-# =========================================================
 
 app.mount(
     "/static",
