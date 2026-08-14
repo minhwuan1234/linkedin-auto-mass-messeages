@@ -17,7 +17,7 @@
     "full_name": "Tony Tran",
     "first_name": "Tony",
     "status": "processing",
-    "step": "building_message",
+    "step": "sending_message",
     "error": ""
   },
   "results": [],
@@ -26,5 +26,5 @@
   "started_at": "2026-08-14T03:49:28.592312+00:00",
   "completed_at": null,
   "worker_id": "Justin.local-74976",
-  "updated_at": "2026-08-14T03:49:38.388138+00:00"
+  "updated_at": "2026-08-14T03:49:39.913675+00:00"
 }
