@@ -1202,3 +1202,80 @@ def open_message_composer(
     print("NAV MESSAGE ACTION CLICKED")
     print("==============================")
     print("")
+
+    def confirm_and_send(
+    page: Page,
+    message: str,
+) -> bool:
+    textbox = find_message_textbox(
+        page
+    )
+
+    print("")
+    print("==============================")
+    print("READY TO SEND")
+    print("==============================")
+    print(message)
+    print("")
+
+    answer = input(
+        "Send this message? [y/N]: "
+    ).strip().lower()
+
+    if answer != "y":
+        print("Message skipped.")
+        return False
+
+    composer = textbox.locator(
+        "xpath=ancestor::*["
+        '@role="dialog"'
+        "][1]"
+    )
+
+    if composer.count() > 0:
+        send_candidates = (
+            composer
+            .get_by_role(
+                "button",
+                name="Send",
+                exact=True,
+            )
+        )
+    else:
+        send_candidates = (
+            page.get_by_role(
+                "button",
+                name="Send",
+                exact=True,
+            )
+        )
+
+    for index in range(
+        send_candidates.count()
+    ):
+        button = send_candidates.nth(
+            index
+        )
+
+        try:
+            if button.is_visible():
+                button.click()
+
+                page.wait_for_timeout(
+                    1_000
+                )
+
+                print("")
+                print("==============================")
+                print("MESSAGE SENT")
+                print("==============================")
+                print("")
+
+                return True
+
+        except Exception:
+            continue
+
+    raise RuntimeError(
+        "Visible Send button not found."
+    )
