@@ -331,3 +331,87 @@ code {
         grid-row: auto;
     }
 }
+
+.contact-status {
+    align-self: start;
+
+    padding: 6px 10px;
+
+    border-radius: 999px;
+
+    font-size: 12px;
+    font-weight: 700;
+
+    text-transform: capitalize;
+}
+
+
+.status-queued {
+    color: #59636e;
+    background: #eef1f4;
+}
+
+
+.status-pending {
+    color: #8a6400;
+    background: #fff3c4;
+}
+
+
+.status-processing,
+.status-running {
+    color: #075ea8;
+    background: #e3f1ff;
+}
+
+
+.status-sent,
+.contact-status.status-sent {
+    color: #137333;
+    background: #e5f5e9;
+}
+
+
+.status-failed,
+.contact-status.status-failed {
+    color: #b3261e;
+    background: #fde8e7;
+}
+
+
+.status-completed {
+    color: #137333;
+    background: #e5f5e9;
+}
+
+
+.contact-step {
+    margin-top: 8px;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    color: #0a66c2;
+}
+
+
+.contact-link {
+    display: block;
+
+    text-decoration: none;
+}
+
+
+.contact-link:hover {
+    text-decoration: underline;
+}
+
+
+.contact-error {
+    margin-top: 8px;
+
+    font-size: 12px;
+    line-height: 1.4;
+
+    color: #c73535;
+}
