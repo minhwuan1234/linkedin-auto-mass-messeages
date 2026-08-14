@@ -10,13 +10,13 @@
   "sent": 0,
   "failed": 0,
   "current": {
-    "index": 0,
+    "index": 1,
     "total": 1,
-    "url": "",
+    "url": "https://www.linkedin.com/in/frank-nguyen-flearningstudio/",
     "full_name": "",
     "first_name": "",
-    "status": "running",
-    "step": "browser_ready",
+    "status": "processing",
+    "step": "opening_profile",
     "error": ""
   },
   "results": [],
@@ -25,5 +25,5 @@
   "started_at": "2026-08-14T03:33:19.364885+00:00",
   "completed_at": null,
   "worker_id": "Justin.local-74976",
-  "updated_at": "2026-08-14T03:33:22.931413+00:00"
+  "updated_at": "2026-08-14T03:33:23.942453+00:00"
 }
