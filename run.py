@@ -4,12 +4,17 @@ from app.browser import LinkedInBrowser
 from app.message_template import build_message
 from app.profile import get_profile_name
 from app.message_sender import send_message
+from app.message_sender import (
+    confirm_and_send,
+    fill_message,
+)
+
 
 PROJECT_ROOT = Path(
     __file__
 ).resolve().parent
 
-INPUT_FILE = (
+INPUT_FILE =. (
     PROJECT_ROOT
     / "input"
     / "urls.txt"
