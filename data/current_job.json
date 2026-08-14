@@ -17,7 +17,7 @@
     "full_name": "Frank Nguyen",
     "first_name": "Frank",
     "status": "processing",
-    "step": "building_message",
+    "step": "sending_message",
     "error": ""
   },
   "results": [
@@ -38,5 +38,5 @@
   "started_at": "2026-08-14T03:49:28.592312+00:00",
   "completed_at": null,
   "worker_id": "Justin.local-74976",
-  "updated_at": "2026-08-14T03:49:53.231326+00:00"
+  "updated_at": "2026-08-14T03:49:54.300788+00:00"
 }
