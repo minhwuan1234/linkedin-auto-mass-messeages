@@ -1,185 +1,152 @@
 from __future__ import annotations
 
-from playwright.sync_api import Locator, Page
-
-
-MAX_POPUP_RETRIES = 5
+from playwright.sync_api import (
+    Locator,
+    Page,
+)
 
 
 # =========================================================
-# PROFILE MESSAGE ACTION
+# SCROLL
 # =========================================================
 
-def find_profile_message_action(
+def scroll_to_bottom(
     page: Page,
-) -> Locator:
-    message_icon = page.locator(
-        'svg#send-privately-medium'
-    ).first
+) -> None:
+    """
+    Scroll xuống cuối LinkedIn profile.
 
-    message_icon.wait_for(
-        state="visible",
-        timeout=15_000,
+    Mục đích:
+    khi header profile gốc ra khỏi viewport,
+    LinkedIn sẽ hiển thị sticky profile navigation
+    ở phía trên màn hình.
+    """
+
+    print("")
+    print("==============================")
+    print("SCROLL TO BOTTOM")
+    print("==============================")
+
+    # Focus page trước để keyboard action tác động
+    # vào document hiện tại.
+    page.locator("body").click(
+        position={
+            "x": 10,
+            "y": 10,
+        },
+        force=True,
     )
 
-    clickable_parent = message_icon.locator(
-        'xpath=ancestor::*['
-        '@role="button" '
-        'or self::button '
-        'or self::a'
-        '][1]'
+    page.keyboard.press(
+        "End"
     )
 
-    if clickable_parent.count() > 0:
-        return clickable_parent.first
-
-    parent = message_icon.locator(
-        "xpath=.."
+    page.wait_for_timeout(
+        1_500
     )
 
-    parent_text = (
-        parent
-        .inner_text()
-        .strip()
+    current_scroll = page.evaluate(
+        "window.scrollY"
     )
-
-    if "Message" in parent_text:
-        return parent
-
-    raise RuntimeError(
-        "Profile Message action not found."
-    )
-
-
-# =========================================================
-# SALES NAVIGATOR POPUP
-# =========================================================
-
-def close_sales_navigator_popup(
-    page: Page,
-) -> bool:
-    popup_markers = page.get_by_text(
-        "Try Sales Navigator",
-        exact=False,
-    )
-
-    visible_popup = None
-
-    for index in range(
-        popup_markers.count()
-    ):
-        candidate = popup_markers.nth(index)
-
-        try:
-            if candidate.is_visible():
-                visible_popup = candidate
-                break
-
-        except Exception:
-            continue
-
-    if visible_popup is None:
-        return False
 
     print(
-        "Sales Navigator popup detected."
+        f"Current scrollY: {current_scroll}"
+    )
+    print("")
+
+
+# =========================================================
+# FIND STICKY MESSAGE
+# =========================================================
+
+def find_sticky_message_action(
+    page: Page,
+) -> Locator:
+    """
+    Sau khi scroll xuống cuối:
+
+    - Message ở profile header gốc thường không còn visible.
+    - Sticky profile nav xuất hiện phía trên.
+    - Tìm các clickable element có text chính xác "Message".
+    - Chọn element visible có y nhỏ nhất.
+    """
+
+    candidates = page.locator(
+        'a, button, [role="button"]'
     )
 
-    close_candidates = page.locator(
-        'button[aria-label*="close" i], '
-        '[role="button"][aria-label*="close" i]'
+    visible_message_actions: list[
+        tuple[float, Locator]
+    ] = []
+
+    candidate_count = (
+        candidates.count()
     )
 
     for index in range(
-        close_candidates.count()
+        candidate_count
     ):
-        candidate = close_candidates.nth(
+        candidate = candidates.nth(
             index
         )
 
         try:
-            if candidate.is_visible():
-                candidate.click(
-                    force=True,
-                )
+            if not candidate.is_visible():
+                continue
 
-                page.wait_for_timeout(
-                    700,
-                )
+            text = (
+                candidate
+                .inner_text()
+                .strip()
+            )
 
-                print(
-                    "Sales Navigator popup closed."
-                )
+            # Chỉ match Message.
+            # Không match Messaging.
+            if text != "Message":
+                continue
 
-                return True
+            box = candidate.bounding_box()
+
+            if box is None:
+                continue
+
+            visible_message_actions.append(
+                (
+                    box["y"],
+                    candidate,
+                )
+            )
 
         except Exception:
             continue
 
-    container = visible_popup
-
-    for _ in range(8):
-        container = container.locator(
-            "xpath=.."
+    if not visible_message_actions:
+        raise RuntimeError(
+            "No visible Message action found "
+            "after scrolling to bottom."
         )
 
-        buttons = container.locator(
-            'button, [role="button"]'
+    # Sticky nav nằm phía trên viewport.
+    # Vì vậy chọn Message có y nhỏ nhất.
+    visible_message_actions.sort(
+        key=lambda item: item[0]
+    )
+
+    print("==============================")
+    print("VISIBLE MESSAGE ACTIONS")
+    print("==============================")
+
+    for y_position, _ in (
+        visible_message_actions
+    ):
+        print(
+            f"Message action y={y_position}"
         )
 
-        for index in range(
-            buttons.count()
-        ):
-            button = buttons.nth(
-                index
-            )
+    print("")
 
-            try:
-                if not button.is_visible():
-                    continue
-
-                aria_label = (
-                    button
-                    .get_attribute(
-                        "aria-label"
-                    )
-                    or ""
-                ).lower()
-
-                text = (
-                    button
-                    .inner_text()
-                    .strip()
-                )
-
-                if (
-                    "close" in aria_label
-                    or text in {
-                        "X",
-                        "×",
-                        "✕",
-                    }
-                ):
-                    button.click(
-                        force=True,
-                    )
-
-                    page.wait_for_timeout(
-                        700,
-                    )
-
-                    print(
-                        "Sales Navigator popup closed."
-                    )
-
-                    return True
-
-            except Exception:
-                continue
-
-    raise RuntimeError(
-        "Sales Navigator popup appeared "
-        "but close action was not found."
+    return (
+        visible_message_actions[0][1]
     )
 
 
@@ -190,59 +157,78 @@ def close_sales_navigator_popup(
 def open_message_composer(
     page: Page,
 ) -> None:
-    for attempt in range(
-        1,
-        MAX_POPUP_RETRIES + 1,
-    ):
-        print("")
-        print(
-            f"Opening Message - attempt {attempt}"
-        )
+    """
+    Scroll xuống cuối profile,
+    tìm Message trên sticky profile nav
+    và click.
+    """
 
-        message_action = (
-            find_profile_message_action(
-                page
-            )
-        )
-
-        message_action.click(
-            force=True,
-        )
-
-        page.wait_for_timeout(
-            1_000,
-        )
-
-        popup_closed = (
-            close_sales_navigator_popup(
-                page
-            )
-        )
-
-        if popup_closed:
-            continue
-
-        return
-
-    raise RuntimeError(
-        "Message composer could not be opened."
+    scroll_to_bottom(
+        page
     )
+
+    message_action = (
+        find_sticky_message_action(
+            page
+        )
+    )
+
+    box = (
+        message_action
+        .bounding_box()
+    )
+
+    print("==============================")
+    print("STICKY MESSAGE FOUND")
+    print("==============================")
+
+    if box is not None:
+        print(
+            f"Position y: {box['y']}"
+        )
+
+    print(
+        "Clicking sticky Message..."
+    )
+    print("")
+
+    message_action.click(
+        force=True,
+    )
+
+    page.wait_for_timeout(
+        1_500
+    )
+
+    print("==============================")
+    print("STICKY MESSAGE CLICKED")
+    print("==============================")
+    print("")
 
 
 # =========================================================
-# MESSAGE TEXTBOX
+# FIND MESSAGE TEXTBOX
 # =========================================================
 
 def find_message_textbox(
     page: Page,
 ) -> Locator:
+    """
+    Find visible textbox của LinkedIn
+    message composer.
+    """
+
     candidates = page.locator(
         '[contenteditable="true"][role="textbox"], '
         '[contenteditable="true"]'
     )
 
-    for index in range(
+    candidate_count = (
         candidates.count()
+    )
+
+    for index in range(
+        candidate_count
     ):
         candidate = candidates.nth(
             index
@@ -261,29 +247,41 @@ def find_message_textbox(
 
 
 # =========================================================
-# SEND BUTTON
+# FIND SEND BUTTON
 # =========================================================
 
 def find_send_button(
     page: Page,
     textbox: Locator,
 ) -> Locator:
+    """
+    Tìm Send button thuộc đúng message composer.
+
+    Ưu tiên tìm trong dialog chứa textbox.
+    Nếu LinkedIn không dùng role=dialog,
+    fallback tìm Send visible toàn page.
+    """
+
     dialog = textbox.locator(
         'xpath=ancestor::*[@role="dialog"][1]'
     )
 
     if dialog.count() > 0:
-        send_buttons = dialog.get_by_role(
-            "button",
-            name="Send",
-            exact=True,
+        send_candidates = (
+            dialog.get_by_role(
+                "button",
+                name="Send",
+                exact=True,
+            )
         )
 
         for index in range(
-            send_buttons.count()
+            send_candidates.count()
         ):
-            button = send_buttons.nth(
-                index
+            button = (
+                send_candidates.nth(
+                    index
+                )
             )
 
             try:
@@ -293,17 +291,22 @@ def find_send_button(
             except Exception:
                 continue
 
-    send_buttons = page.get_by_role(
-        "button",
-        name="Send",
-        exact=True,
+    # Fallback
+    send_candidates = (
+        page.get_by_role(
+            "button",
+            name="Send",
+            exact=True,
+        )
     )
 
     for index in range(
-        send_buttons.count()
+        send_candidates.count()
     ):
-        button = send_buttons.nth(
-            index
+        button = (
+            send_candidates.nth(
+                index
+            )
         )
 
         try:
@@ -326,6 +329,18 @@ def send_message(
     page: Page,
     message: str,
 ) -> None:
+    """
+    Full message flow:
+
+    1. Scroll xuống cuối profile.
+    2. Tìm sticky Message.
+    3. Mở composer.
+    4. Tìm textbox.
+    5. Fill template.
+    6. Tìm Send.
+    7. Click Send.
+    """
+
     cleaned_message = (
         message
         .strip()
@@ -336,17 +351,36 @@ def send_message(
             "Message cannot be empty."
         )
 
+    # -----------------------------------------
+    # Open composer
+    # -----------------------------------------
+
     open_message_composer(
         page
     )
 
     page.wait_for_timeout(
-        800,
+        800
     )
 
-    textbox = find_message_textbox(
-        page
+    # -----------------------------------------
+    # Find textbox
+    # -----------------------------------------
+
+    textbox = (
+        find_message_textbox(
+            page
+        )
     )
+
+    print("==============================")
+    print("MESSAGE TEXTBOX FOUND")
+    print("==============================")
+    print("")
+
+    # -----------------------------------------
+    # Fill message
+    # -----------------------------------------
 
     textbox.click()
 
@@ -355,32 +389,41 @@ def send_message(
     )
 
     page.wait_for_timeout(
-        500,
+        500
     )
 
-    print("")
     print("==============================")
     print("MESSAGE FILLED")
     print("==============================")
     print(cleaned_message)
     print("")
 
-    send_button = find_send_button(
-        page,
-        textbox,
+    # -----------------------------------------
+    # Find Send
+    # -----------------------------------------
+
+    send_button = (
+        find_send_button(
+            page,
+            textbox,
+        )
     )
 
-    print(
-        "Send button found."
-    )
+    print("==============================")
+    print("SEND BUTTON FOUND")
+    print("==============================")
+    print("")
+
+    # -----------------------------------------
+    # Send
+    # -----------------------------------------
 
     send_button.click()
 
     page.wait_for_timeout(
-        1_500,
+        1_500
     )
 
-    print("")
     print("==============================")
     print("MESSAGE SENT")
     print("==============================")
