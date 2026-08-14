@@ -16,7 +16,7 @@
     "full_name": "",
     "first_name": "",
     "status": "processing",
-    "step": "opening_profile",
+    "step": "reading_profile",
     "error": ""
   },
   "results": [],
@@ -25,5 +25,5 @@
   "started_at": "2026-08-14T03:44:44.703759+00:00",
   "completed_at": null,
   "worker_id": "Justin.local-74976",
-  "updated_at": "2026-08-14T03:44:49.186241+00:00"
+  "updated_at": "2026-08-14T03:44:52.958098+00:00"
 }
