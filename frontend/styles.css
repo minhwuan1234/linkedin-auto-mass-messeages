@@ -1,0 +1,333 @@
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+    color: #151515;
+    background: #f5f6f8;
+}
+
+body {
+    margin: 0;
+}
+
+button,
+textarea {
+    font: inherit;
+}
+
+.app-shell {
+    width: min(1400px, calc(100% - 48px));
+    margin: 0 auto;
+    padding: 40px 0 80px;
+}
+
+.topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 32px;
+
+    margin-bottom: 32px;
+}
+
+.eyebrow {
+    margin-bottom: 8px;
+
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+
+    color: #0a66c2;
+}
+
+h1 {
+    margin: 0;
+
+    font-size: 36px;
+    line-height: 1.1;
+}
+
+h2 {
+    margin: 0;
+
+    font-size: 18px;
+}
+
+p {
+    color: #68707a;
+}
+
+.system-status {
+    padding: 10px 16px;
+
+    border: 1px solid #d8dde3;
+    border-radius: 999px;
+
+    background: white;
+
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.layout {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1.15fr)
+        minmax(360px, 0.85fr);
+
+    gap: 24px;
+}
+
+.panel {
+    padding: 24px;
+
+    border: 1px solid #e1e4e8;
+    border-radius: 16px;
+
+    background: white;
+}
+
+.composer-panel {
+    grid-row: span 2;
+}
+
+.results-panel {
+    grid-column: 2;
+}
+
+.panel-heading {
+    margin-bottom: 24px;
+}
+
+.panel-heading p {
+    margin: 6px 0 0;
+}
+
+label {
+    display: block;
+
+    margin-bottom: 8px;
+
+    font-size: 14px;
+    font-weight: 650;
+}
+
+textarea {
+    width: 100%;
+
+    border: 1px solid #d8dde3;
+    border-radius: 10px;
+
+    padding: 14px;
+
+    resize: vertical;
+
+    outline: none;
+
+    transition: border-color 120ms ease;
+}
+
+textarea:focus {
+    border-color: #0a66c2;
+}
+
+.url-input {
+    min-height: 220px;
+}
+
+.template-input {
+    min-height: 170px;
+}
+
+.input-meta,
+.template-help {
+    margin-top: 8px;
+    margin-bottom: 24px;
+
+    font-size: 13px;
+
+    color: #808892;
+}
+
+code {
+    padding: 2px 6px;
+
+    border-radius: 4px;
+
+    background: #f0f2f5;
+}
+
+.primary-button {
+    width: 100%;
+
+    border: 0;
+    border-radius: 10px;
+
+    padding: 14px 18px;
+
+    background: #0a66c2;
+    color: white;
+
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.primary-button:hover {
+    background: #004182;
+}
+
+.primary-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+
+    margin-bottom: 10px;
+
+    font-size: 13px;
+}
+
+.progress-track {
+    width: 100%;
+    height: 8px;
+
+    overflow: hidden;
+
+    border-radius: 999px;
+
+    background: #edf0f3;
+}
+
+.progress-bar {
+    width: 0%;
+    height: 100%;
+
+    border-radius: inherit;
+
+    background: #0a66c2;
+
+    transition: width 200ms ease;
+}
+
+.metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 12px;
+
+    margin-top: 20px;
+}
+
+.metric {
+    padding: 14px;
+
+    border-radius: 10px;
+
+    background: #f6f7f9;
+}
+
+.metric span {
+    display: block;
+
+    margin-bottom: 6px;
+
+    font-size: 12px;
+
+    color: #7b838c;
+}
+
+.metric strong {
+    font-size: 22px;
+}
+
+.current-profile {
+    margin-top: 20px;
+
+    padding: 16px;
+
+    border: 1px solid #e2e5e9;
+    border-radius: 10px;
+}
+
+.current-profile.empty {
+    color: #8a9199;
+}
+
+.results-list {
+    display: flex;
+    flex-direction: column;
+
+    gap: 8px;
+}
+
+.result-row {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        auto;
+
+    gap: 12px;
+
+    padding: 14px;
+
+    border: 1px solid #edf0f2;
+    border-radius: 10px;
+}
+
+.result-name {
+    font-weight: 650;
+}
+
+.result-url {
+    margin-top: 4px;
+
+    overflow: hidden;
+
+    font-size: 12px;
+    color: #7b838c;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.status-sent {
+    color: #16803c;
+}
+
+.status-failed {
+    color: #c73535;
+}
+
+.empty-state {
+    padding: 40px 0;
+
+    text-align: center;
+
+    color: #9299a1;
+}
+
+@media (max-width: 900px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+
+    .composer-panel,
+    .results-panel {
+        grid-column: auto;
+        grid-row: auto;
+    }
+}
