@@ -14,10 +14,10 @@
     "index": 2,
     "total": 2,
     "url": "https://www.linkedin.com/in/frank-nguyen-flearningstudio/",
-    "full_name": "",
-    "first_name": "",
+    "full_name": "Frank Nguyen",
+    "first_name": "Frank",
     "status": "processing",
-    "step": "reading_profile",
+    "step": "building_message",
     "error": ""
   },
   "results": [
@@ -38,5 +38,5 @@
   "started_at": "2026-08-14T03:49:28.592312+00:00",
   "completed_at": null,
   "worker_id": "Justin.local-74976",
-  "updated_at": "2026-08-14T03:49:52.169768+00:00"
+  "updated_at": "2026-08-14T03:49:53.231326+00:00"
 }
