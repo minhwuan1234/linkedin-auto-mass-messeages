@@ -7,84 +7,184 @@ from playwright.sync_api import (
 
 
 # =========================================================
-# SCROLL
+# SCROLL REAL LINKEDIN CONTAINER
 # =========================================================
 
-def scroll_to_bottom(
+def scroll_profile_to_bottom(
     page: Page,
 ) -> None:
     """
-    Scroll xuống cuối LinkedIn profile.
-
-    Mục đích:
-    khi header profile gốc ra khỏi viewport,
-    LinkedIn sẽ hiển thị sticky profile navigation
-    ở phía trên màn hình.
+    LinkedIn hiện tại có thể không scroll bằng window.
+    Function này tìm element thực sự có vertical scroll
+    rồi ép nó xuống cuối.
     """
 
     print("")
     print("==============================")
-    print("SCROLL TO BOTTOM")
+    print("FINDING SCROLL CONTAINER")
     print("==============================")
 
-    # Focus page trước để keyboard action tác động
-    # vào document hiện tại.
-    page.locator("body").click(
-        position={
-            "x": 10,
-            "y": 10,
-        },
-        force=True,
+    result = page.evaluate(
+        """
+        () => {
+            const elements = Array.from(
+                document.querySelectorAll("*")
+            );
+
+            const candidates = [];
+
+            for (const element of elements) {
+                const style = window.getComputedStyle(
+                    element
+                );
+
+                const overflowY = style.overflowY;
+
+                const scrollable =
+                    (
+                        overflowY === "auto" ||
+                        overflowY === "scroll"
+                    ) &&
+                    element.scrollHeight >
+                    element.clientHeight + 200;
+
+                if (!scrollable) {
+                    continue;
+                }
+
+                candidates.push({
+                    element,
+                    distance:
+                        element.scrollHeight -
+                        element.clientHeight
+                });
+            }
+
+            candidates.sort(
+                (a, b) =>
+                    b.distance - a.distance
+            );
+
+            if (candidates.length > 0) {
+                const target =
+                    candidates[0].element;
+
+                target.scrollTop =
+                    target.scrollHeight;
+
+                target.dispatchEvent(
+                    new Event(
+                        "scroll",
+                        {
+                            bubbles: true
+                        }
+                    )
+                );
+
+                return {
+                    mode: "element",
+                    tag: target.tagName,
+                    className:
+                        target.className || "",
+                    scrollTop:
+                        target.scrollTop,
+                    scrollHeight:
+                        target.scrollHeight,
+                    clientHeight:
+                        target.clientHeight
+                };
+            }
+
+            const scrollingElement =
+                document.scrollingElement;
+
+            if (scrollingElement) {
+                scrollingElement.scrollTop =
+                    scrollingElement.scrollHeight;
+
+                return {
+                    mode: "document",
+                    tag:
+                        scrollingElement.tagName,
+                    className:
+                        scrollingElement.className
+                        || "",
+                    scrollTop:
+                        scrollingElement.scrollTop,
+                    scrollHeight:
+                        scrollingElement.scrollHeight,
+                    clientHeight:
+                        scrollingElement.clientHeight
+                };
+            }
+
+            return {
+                mode: "not_found"
+            };
+        }
+        """
     )
 
-    page.keyboard.press(
-        "End"
+    print(
+        f"Scroll mode   : "
+        f"{result.get('mode')}"
     )
+
+    print(
+        f"Container tag : "
+        f"{result.get('tag')}"
+    )
+
+    print(
+        f"Scroll top    : "
+        f"{result.get('scrollTop')}"
+    )
+
+    print(
+        f"Scroll height : "
+        f"{result.get('scrollHeight')}"
+    )
+
+    print(
+        f"Client height : "
+        f"{result.get('clientHeight')}"
+    )
+
+    print("")
 
     page.wait_for_timeout(
         1_500
     )
 
-    current_scroll = page.evaluate(
-        "window.scrollY"
-    )
-
-    print(
-        f"Current scrollY: {current_scroll}"
-    )
-    print("")
-
 
 # =========================================================
-# FIND STICKY MESSAGE
+# FIND STICKY NAV MESSAGE
 # =========================================================
 
 def find_sticky_message_action(
     page: Page,
 ) -> Locator:
     """
-    Sau khi scroll xuống cuối:
+    Sticky profile Message của LinkedIn
+    hiện tại là một <a> có href chứa:
 
-    - Message ở profile header gốc thường không còn visible.
-    - Sticky profile nav xuất hiện phía trên.
-    - Tìm các clickable element có text chính xác "Message".
-    - Chọn element visible có y nhỏ nhất.
+        recipient=
+        interop=msgOverlay
+
+    Không dùng text Message chung nữa.
     """
 
     candidates = page.locator(
-        'a, button, [role="button"]'
+        'a[href*="recipient="]'
+        '[href*="interop=msgOverlay"]'
     )
 
-    visible_message_actions: list[
+    visible_candidates: list[
         tuple[float, Locator]
     ] = []
 
-    candidate_count = (
-        candidates.count()
-    )
-
     for index in range(
-        candidate_count
+        candidates.count()
     ):
         candidate = candidates.nth(
             index
@@ -94,60 +194,56 @@ def find_sticky_message_action(
             if not candidate.is_visible():
                 continue
 
+            box = candidate.bounding_box()
+
+            if box is None:
+                continue
+
             text = (
                 candidate
                 .inner_text()
                 .strip()
             )
 
-            # Chỉ match Message.
-            # Không match Messaging.
+            href = (
+                candidate
+                .get_attribute(
+                    "href"
+                )
+                or ""
+            )
+
             if text != "Message":
                 continue
 
-            box = candidate.bounding_box()
-
-            if box is None:
-                continue
-
-            visible_message_actions.append(
+            visible_candidates.append(
                 (
                     box["y"],
                     candidate,
                 )
             )
 
+            print(
+                "Sticky candidate | "
+                f"y={box['y']} | "
+                f"text={text!r} | "
+                f"href={href}"
+            )
+
         except Exception:
             continue
 
-    if not visible_message_actions:
+    if not visible_candidates:
         raise RuntimeError(
-            "No visible Message action found "
-            "after scrolling to bottom."
+            "Sticky Message link with "
+            "interop=msgOverlay was not found."
         )
 
-    # Sticky nav nằm phía trên viewport.
-    # Vì vậy chọn Message có y nhỏ nhất.
-    visible_message_actions.sort(
+    visible_candidates.sort(
         key=lambda item: item[0]
     )
 
-    print("==============================")
-    print("VISIBLE MESSAGE ACTIONS")
-    print("==============================")
-
-    for y_position, _ in (
-        visible_message_actions
-    ):
-        print(
-            f"Message action y={y_position}"
-        )
-
-    print("")
-
-    return (
-        visible_message_actions[0][1]
-    )
+    return visible_candidates[0][1]
 
 
 # =========================================================
@@ -157,13 +253,7 @@ def find_sticky_message_action(
 def open_message_composer(
     page: Page,
 ) -> None:
-    """
-    Scroll xuống cuối profile,
-    tìm Message trên sticky profile nav
-    và click.
-    """
-
-    scroll_to_bottom(
+    scroll_profile_to_bottom(
         page
     )
 
@@ -173,11 +263,17 @@ def open_message_composer(
         )
     )
 
-    box = (
+    box = message_action.bounding_box()
+
+    href = (
         message_action
-        .bounding_box()
+        .get_attribute(
+            "href"
+        )
+        or ""
     )
 
+    print("")
     print("==============================")
     print("STICKY MESSAGE FOUND")
     print("==============================")
@@ -188,9 +284,13 @@ def open_message_composer(
         )
 
     print(
+        f"Href: {href}"
+    )
+
+    print("")
+    print(
         "Clicking sticky Message..."
     )
-    print("")
 
     message_action.click(
         force=True,
@@ -200,6 +300,7 @@ def open_message_composer(
         1_500
     )
 
+    print("")
     print("==============================")
     print("STICKY MESSAGE CLICKED")
     print("==============================")
@@ -207,28 +308,19 @@ def open_message_composer(
 
 
 # =========================================================
-# FIND MESSAGE TEXTBOX
+# MESSAGE TEXTBOX
 # =========================================================
 
 def find_message_textbox(
     page: Page,
 ) -> Locator:
-    """
-    Find visible textbox của LinkedIn
-    message composer.
-    """
-
     candidates = page.locator(
         '[contenteditable="true"][role="textbox"], '
         '[contenteditable="true"]'
     )
 
-    candidate_count = (
-        candidates.count()
-    )
-
     for index in range(
-        candidate_count
+        candidates.count()
     ):
         candidate = candidates.nth(
             index
@@ -247,41 +339,29 @@ def find_message_textbox(
 
 
 # =========================================================
-# FIND SEND BUTTON
+# SEND BUTTON
 # =========================================================
 
 def find_send_button(
     page: Page,
     textbox: Locator,
 ) -> Locator:
-    """
-    Tìm Send button thuộc đúng message composer.
-
-    Ưu tiên tìm trong dialog chứa textbox.
-    Nếu LinkedIn không dùng role=dialog,
-    fallback tìm Send visible toàn page.
-    """
-
     dialog = textbox.locator(
         'xpath=ancestor::*[@role="dialog"][1]'
     )
 
     if dialog.count() > 0:
-        send_candidates = (
-            dialog.get_by_role(
-                "button",
-                name="Send",
-                exact=True,
-            )
+        buttons = dialog.get_by_role(
+            "button",
+            name="Send",
+            exact=True,
         )
 
         for index in range(
-            send_candidates.count()
+            buttons.count()
         ):
-            button = (
-                send_candidates.nth(
-                    index
-                )
+            button = buttons.nth(
+                index
             )
 
             try:
@@ -291,22 +371,17 @@ def find_send_button(
             except Exception:
                 continue
 
-    # Fallback
-    send_candidates = (
-        page.get_by_role(
-            "button",
-            name="Send",
-            exact=True,
-        )
+    buttons = page.get_by_role(
+        "button",
+        name="Send",
+        exact=True,
     )
 
     for index in range(
-        send_candidates.count()
+        buttons.count()
     ):
-        button = (
-            send_candidates.nth(
-                index
-            )
+        button = buttons.nth(
+            index
         )
 
         try:
@@ -329,21 +404,8 @@ def send_message(
     page: Page,
     message: str,
 ) -> None:
-    """
-    Full message flow:
-
-    1. Scroll xuống cuối profile.
-    2. Tìm sticky Message.
-    3. Mở composer.
-    4. Tìm textbox.
-    5. Fill template.
-    6. Tìm Send.
-    7. Click Send.
-    """
-
     cleaned_message = (
-        message
-        .strip()
+        message.strip()
     )
 
     if not cleaned_message:
@@ -351,36 +413,35 @@ def send_message(
             "Message cannot be empty."
         )
 
-    # -----------------------------------------
-    # Open composer
-    # -----------------------------------------
+    # -----------------------------------------------------
+    # 1. Open correct sticky Message
+    # -----------------------------------------------------
 
     open_message_composer(
         page
     )
 
     page.wait_for_timeout(
-        800
+        1_000
     )
 
-    # -----------------------------------------
-    # Find textbox
-    # -----------------------------------------
+    # -----------------------------------------------------
+    # 2. Find textbox
+    # -----------------------------------------------------
 
-    textbox = (
-        find_message_textbox(
-            page
-        )
+    textbox = find_message_textbox(
+        page
     )
 
+    print("")
     print("==============================")
     print("MESSAGE TEXTBOX FOUND")
     print("==============================")
     print("")
 
-    # -----------------------------------------
-    # Fill message
-    # -----------------------------------------
+    # -----------------------------------------------------
+    # 3. Fill message
+    # -----------------------------------------------------
 
     textbox.click()
 
@@ -398,15 +459,13 @@ def send_message(
     print(cleaned_message)
     print("")
 
-    # -----------------------------------------
-    # Find Send
-    # -----------------------------------------
+    # -----------------------------------------------------
+    # 4. Find Send
+    # -----------------------------------------------------
 
-    send_button = (
-        find_send_button(
-            page,
-            textbox,
-        )
+    send_button = find_send_button(
+        page,
+        textbox,
     )
 
     print("==============================")
@@ -414,9 +473,9 @@ def send_message(
     print("==============================")
     print("")
 
-    # -----------------------------------------
-    # Send
-    # -----------------------------------------
+    # -----------------------------------------------------
+    # 5. Send
+    # -----------------------------------------------------
 
     send_button.click()
 
