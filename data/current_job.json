@@ -1,6 +1,6 @@
 {
   "job_id": "79ab57b1-27a8-4630-a333-7a9c2ee0e1a9",
-  "status": "processing",
+  "status": "completed",
   "urls": [
     "https://www.linkedin.com/in/frank-nguyen-flearningstudio/"
   ],
@@ -9,16 +9,7 @@
   "processed": 1,
   "sent": 1,
   "failed": 0,
-  "current": {
-    "index": 1,
-    "total": 1,
-    "url": "",
-    "full_name": "",
-    "first_name": "",
-    "status": "completed",
-    "step": "job_completed",
-    "error": ""
-  },
+  "current": null,
   "results": [
     {
       "index": 1,
@@ -35,7 +26,7 @@
   "error": "",
   "created_at": "2026-08-14T03:44:40.718470+00:00",
   "started_at": "2026-08-14T03:44:44.703759+00:00",
-  "completed_at": null,
+  "completed_at": "2026-08-14T03:45:04.866257+00:00",
   "worker_id": "Justin.local-74976",
-  "updated_at": "2026-08-14T03:45:03.668706+00:00"
+  "updated_at": "2026-08-14T03:45:04.866274+00:00"
 }
