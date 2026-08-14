@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-MESSAGE_TEMPLATE = """Hi {first_name},
+DEFAULT_MESSAGE_TEMPLATE = """Hi {first_name},
 
 I wanted to reach out regarding...
 """
@@ -9,6 +9,7 @@ I wanted to reach out regarding...
 
 def build_message(
     first_name: str,
+    template: str | None = None,
 ) -> str:
     cleaned_first_name = (
         first_name
@@ -20,6 +21,17 @@ def build_message(
             "First name cannot be empty."
         )
 
-    return MESSAGE_TEMPLATE.format(
+    active_template = (
+        template
+        if template is not None
+        else DEFAULT_MESSAGE_TEMPLATE
+    )
+
+    if not active_template.strip():
+        raise ValueError(
+            "Message template cannot be empty."
+        )
+
+    return active_template.format(
         first_name=cleaned_first_name
     )
