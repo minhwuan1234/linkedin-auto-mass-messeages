@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>LinkedIn Mass Messages</title>
+
+    <link
+        rel="stylesheet"
+        href="/static/styles.css"
+    >
+</head>
+
+<body>
+
+<div class="app-shell">
+
+    <header class="topbar">
+        <div>
+            <div class="eyebrow">
+                LINKEDIN AUTOMATION
+            </div>
+
+            <h1>
+                Mass Messages
+            </h1>
+
+            <p>
+                Send a personalized message template
+                to a list of LinkedIn profiles.
+            </p>
+        </div>
+
+        <div
+            id="system-status"
+            class="system-status"
+        >
+            Idle
+        </div>
+    </header>
+
+    <main class="layout">
+
+        <section class="panel composer-panel">
+
+            <div class="panel-heading">
+                <div>
+                    <h2>New message run</h2>
+
+                    <p>
+                        Add one LinkedIn profile URL
+                        per line.
+                    </p>
+                </div>
+            </div>
+
+            <label for="urls">
+                LinkedIn URLs
+            </label>
+
+            <textarea
+                id="urls"
+                class="url-input"
+                placeholder="https://www.linkedin.com/in/person-one/&#10;https://www.linkedin.com/in/person-two/"
+            ></textarea>
+
+            <div class="input-meta">
+                <span id="url-count">
+                    0 profiles
+                </span>
+            </div>
+
+            <label for="template">
+                Message template
+            </label>
+
+            <textarea
+                id="template"
+                class="template-input"
+            >Hi {first_name},
+
+I wanted to reach out regarding...</textarea>
+
+            <div class="template-help">
+                Available variable:
+                <code>{first_name}</code>
+            </div>
+
+            <button
+                id="start-button"
+                class="primary-button"
+            >
+                Start Messaging
+            </button>
+
+        </section>
+
+        <section class="panel status-panel">
+
+            <div class="panel-heading">
+                <div>
+                    <h2>Current run</h2>
+
+                    <p>
+                        Live progress from the
+                        browser automation.
+                    </p>
+                </div>
+            </div>
+
+            <div class="progress-header">
+                <span id="progress-label">
+                    No active run
+                </span>
+
+                <span id="progress-number">
+                    0 / 0
+                </span>
+            </div>
+
+            <div class="progress-track">
+                <div
+                    id="progress-bar"
+                    class="progress-bar"
+                ></div>
+            </div>
+
+            <div class="metrics">
+
+                <div class="metric">
+                    <span>Sent</span>
+                    <strong id="sent-count">0</strong>
+                </div>
+
+                <div class="metric">
+                    <span>Failed</span>
+                    <strong id="failed-count">0</strong>
+                </div>
+
+                <div class="metric">
+                    <span>Remaining</span>
+                    <strong id="remaining-count">0</strong>
+                </div>
+
+            </div>
+
+            <div
+                id="current-profile"
+                class="current-profile empty"
+            >
+                Waiting for a run.
+            </div>
+
+        </section>
+
+        <section class="panel results-panel">
+
+            <div class="panel-heading">
+                <div>
+                    <h2>Results</h2>
+
+                    <p>
+                        Profiles processed during
+                        the current run.
+                    </p>
+                </div>
+            </div>
+
+            <div
+                id="results"
+                class="results-list"
+            >
+                <div class="empty-state">
+                    No results yet.
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="/static/app.js"></script>
+
+</body>
+</html>
