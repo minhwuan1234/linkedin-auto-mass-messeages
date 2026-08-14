@@ -1,26 +1,11 @@
 from __future__ import annotations
 
-from playwright.sync_api import (
-    Locator,
-    Page,
-)
+from playwright.sync_api import Locator, Page
 
-
-MAX_POPUP_RETRIES = 5
-
-
-# =========================================================
-# PROFILE MESSAGE ACTION
-# =========================================================
 
 def find_profile_message_action(
     page: Page,
 ) -> Locator:
-    """
-    Find Message action directly from the
-    main LinkedIn profile header.
-    """
-
     message_icon = page.locator(
         'svg#send-privately-medium'
     ).first
@@ -35,6 +20,243 @@ def find_profile_message_action(
         '@role="button" '
         'or self::button '
         'or self::a'
+        '][1]'
+    )
+
+    if clickable_parent.count() > 0:
+        return clickable_parent.first
+
+    parent = message_icon.locator(
+        "xpath=.."
+    )
+
+    parent_text = (
+        parent
+        .inner_text()
+        .strip()
+    )
+
+    if "Message" in parent_text:
+        return parent
+
+    raise RuntimeError(
+        "Profile Message action not found."
+    )
+
+
+def open_message_composer(
+    page: Page,
+) -> None:
+    message_action = find_profile_message_action(
+        page
+    )
+
+    print("")
+    print("==============================")
+    print("MESSAGE ACTION FOUND")
+    print("==============================")
+    print("Clicking Message...")
+    print("")
+
+    message_action.click(
+        force=True
+    )
+
+    page.wait_for_timeout(
+        1_500
+    )
+
+
+def find_message_textbox(
+    page: Page,
+) -> Locator:
+    candidates = page.locator(
+        '[contenteditable="true"]'
+    )
+
+    for index in range(
+        candidates.count()
+    ):
+        candidate = candidates.nth(
+            index
+        )
+
+        try:
+            if candidate.is_visible():
+                return candidate
+
+        except Exception:
+            continue
+
+    raise RuntimeError(
+        "Message textbox not found."
+    )
+
+
+def fill_message(
+    page: Page,
+    message: str,
+) -> None:
+    cleaned_message = message.strip()
+
+    if not cleaned_message:
+        raise ValueError(
+            "Message cannot be empty."
+        )
+
+    open_message_composer(
+        page
+    )
+
+    textbox = find_message_textbox(
+        page
+    )
+
+    textbox.click()
+
+    textbox.fill(
+        cleaned_message
+    )
+
+    page.wait_for_timeout(
+        500
+    )
+
+    print("")
+    print("==============================")
+    print("MESSAGE FILLED")
+    print("==============================")
+    print(cleaned_message)
+    print("")from __future__ import annotations
+
+from playwright.sync_api import Locator, Page
+
+
+def find_profile_message_action(
+    page: Page,
+) -> Locator:
+    message_icon = page.locator(
+        'svg#send-privately-medium'
+    ).first
+
+    message_icon.wait_for(
+        state="visible",
+        timeout=15_000,
+    )
+
+    clickable_parent = message_icon.locator(
+        'xpath=ancestor::*['
+        '@role="button" '
+        'or self::button '
+        'or self::a'
+        '][1]'
+    )
+
+    if clickable_parent.count() > 0:
+        return clickable_parent.first
+
+    parent = message_icon.locator(
+        "xpath=.."
+    )
+
+    parent_text = (
+        parent
+        .inner_text()
+        .strip()
+    )
+
+    if "Message" in parent_text:
+        return parent
+
+    raise RuntimeError(
+        "Profile Message action not found."
+    )
+
+
+def open_message_composer(
+    page: Page,
+) -> None:
+    message_action = find_profile_message_action(
+        page
+    )
+
+    print("")
+    print("==============================")
+    print("MESSAGE ACTION FOUND")
+    print("==============================")
+    print("Clicking Message...")
+    print("")
+
+    message_action.click(
+        force=True
+    )
+
+    page.wait_for_timeout(
+        1_500
+    )
+
+
+def find_message_textbox(
+    page: Page,
+) -> Locator:
+    candidates = page.locator(
+        '[contenteditable="true"]'
+    )
+
+    for index in range(
+        candidates.count()
+    ):
+        candidate = candidates.nth(
+            index
+        )
+
+        try:
+            if candidate.is_visible():
+                return candidate
+
+        except Exception:
+            continue
+
+    raise RuntimeError(
+        "Message textbox not found."
+    )
+
+
+def fill_message(
+    page: Page,
+    message: str,
+) -> None:
+    cleaned_message = message.strip()
+
+    if not cleaned_message:
+        raise ValueError(
+            "Message cannot be empty."
+        )
+
+    open_message_composer(
+        page
+    )
+
+    textbox = find_message_textbox(
+        page
+    )
+
+    textbox.click()
+
+    textbox.fill(
+        cleaned_message
+    )
+
+    page.wait_for_timeout(
+        500
+    )
+
+    print("")
+    print("==============================")
+    print("MESSAGE FILLED")
+    print("==============================")
+    print(cleaned_message)
+    print("")        'or self::a'
         '][1]'
     )
 
