@@ -16,7 +16,7 @@
     "full_name": "",
     "first_name": "",
     "status": "running",
-    "step": "starting_browser",
+    "step": "browser_ready",
     "error": ""
   },
   "results": [],
@@ -25,5 +25,5 @@
   "started_at": "2026-08-14T03:33:19.364885+00:00",
   "completed_at": null,
   "worker_id": "Justin.local-74976",
-  "updated_at": "2026-08-14T03:33:20.383771+00:00"
+  "updated_at": "2026-08-14T03:33:22.931413+00:00"
 }
