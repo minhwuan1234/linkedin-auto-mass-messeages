@@ -130,7 +130,9 @@ async function startMessaging() {
     }
 
     catch (error) {
-        console.error(error);
+        console.error(
+            error
+        );
 
         alert(
             "Could not connect to server."
@@ -158,25 +160,7 @@ async function fetchStatus() {
 
     if (!response.ok) {
         throw new Error(
-            "Could not load job status."
-        );
-    }
-
-    return response.json();
-}
-
-
-async function fetchContacts() {
-    const response = await fetch(
-        "/api/contacts",
-        {
-            cache: "no-store",
-        }
-    );
-
-    if (!response.ok) {
-        throw new Error(
-            "Could not load contacts."
+            "Could not load message status."
         );
     }
 
@@ -186,37 +170,31 @@ async function fetchContacts() {
 
 async function refreshDashboard() {
     try {
-        const [
-            state,
-            contactsData,
-        ] = await Promise.all([
-            fetchStatus(),
-            fetchContacts(),
-        ]);
+        const state =
+            await fetchStatus();
 
         renderState(
             state
         );
 
         renderContacts(
-            contactsData.contacts || []
+            state
         );
 
         const status =
             state.status || "idle";
 
-        const active =
+        startButton.disabled =
             ACTIVE_STATUSES.includes(
                 status
             );
 
-        startButton.disabled =
-            active;
-
     }
 
     catch (error) {
-        console.error(error);
+        console.error(
+            error
+        );
     }
 
     setTimeout(
@@ -235,6 +213,7 @@ function renderState(state) {
 
     systemStatus.className =
         `system-status status-${status}`;
+
 
     const total =
         state.total || 0;
@@ -255,6 +234,7 @@ function renderState(state) {
                 / total
             ) * 100
             : 0;
+
 
     progressNumber.textContent =
         `${processed} / ${total}`;
@@ -323,9 +303,11 @@ function renderCurrent(current) {
         return;
     }
 
+
     currentProfile.classList.remove(
         "empty"
     );
+
 
     const name =
         current.full_name
@@ -335,7 +317,8 @@ function renderCurrent(current) {
     const step =
         current.step
         || current.status
-        || "";
+        || "processing";
+
 
     currentProfile.innerHTML = `
         <div class="result-name">
@@ -355,8 +338,150 @@ function renderCurrent(current) {
 }
 
 
-function renderContacts(items) {
-    if (!items.length) {
+function buildContactsFromJob(state) {
+    const urls =
+        Array.isArray(state.urls)
+            ? state.urls
+            : [];
+
+    const results =
+        Array.isArray(state.results)
+            ? state.results
+            : [];
+
+    const current =
+        state.current || null;
+
+    const resultMap =
+        new Map();
+
+
+    for (const item of results) {
+        if (!item.url) {
+            continue;
+        }
+
+        resultMap.set(
+            item.url,
+            item
+        );
+    }
+
+
+    return urls.map(
+        (url, index) => {
+
+            const result =
+                resultMap.get(
+                    url
+                );
+
+
+            if (result) {
+                return {
+                    index:
+                        result.index
+                        || index + 1,
+
+                    url,
+
+                    full_name:
+                        result.full_name
+                        || "",
+
+                    first_name:
+                        result.first_name
+                        || "",
+
+                    status:
+                        result.status
+                        || "completed",
+
+                    step:
+                        result.step
+                        || "",
+
+                    error:
+                        result.error
+                        || "",
+                };
+            }
+
+
+            if (
+                current
+                && current.url === url
+            ) {
+                return {
+                    index:
+                        current.index
+                        || index + 1,
+
+                    url,
+
+                    full_name:
+                        current.full_name
+                        || "",
+
+                    first_name:
+                        current.first_name
+                        || "",
+
+                    status:
+                        "processing",
+
+                    step:
+                        current.step
+                        || "processing",
+
+                    error:
+                        current.error
+                        || "",
+                };
+            }
+
+
+            let waitingStatus =
+                "queued";
+
+
+            if (
+                state.status === "pending"
+            ) {
+                waitingStatus =
+                    "waiting";
+            }
+
+
+            return {
+                index: index + 1,
+
+                url,
+
+                full_name: "",
+
+                first_name: "",
+
+                status:
+                    waitingStatus,
+
+                step: "",
+
+                error: "",
+            };
+        }
+    );
+}
+
+
+function renderContacts(state) {
+    const contacts =
+        buildContactsFromJob(
+            state
+        );
+
+
+    if (!contacts.length) {
         contactsContainer.innerHTML = `
             <div class="empty-state">
                 No contacts yet.
@@ -366,9 +491,11 @@ function renderContacts(items) {
         return;
     }
 
+
     contactsContainer.innerHTML =
-        items
+        contacts
         .map(contact => {
+
             const status =
                 contact.status
                 || "queued";
@@ -376,15 +503,20 @@ function renderContacts(items) {
             const name =
                 contact.full_name
                 || contact.first_name
-                || "LinkedIn contact";
+                || `Contact ${contact.index}`;
 
             const error =
                 contact.error || "";
 
+            const step =
+                contact.step || "";
+
+
             return `
                 <div class="result-row">
 
-                    <div>
+                    <div class="contact-main">
+
                         <div class="result-name">
                             ${escapeHtml(name)}
                         </div>
@@ -392,15 +524,26 @@ function renderContacts(items) {
                         <a
                             class="result-url contact-link"
                             href="${escapeHtml(
-                                contact.url || "#"
+                                contact.url
                             )}"
                             target="_blank"
                             rel="noopener noreferrer"
                         >
                             ${escapeHtml(
-                                contact.url || ""
+                                contact.url
                             )}
                         </a>
+
+                        ${
+                            step
+                                && status === "processing"
+                                ? `
+                                    <div class="contact-step">
+                                        ${escapeHtml(step)}
+                                    </div>
+                                `
+                                : ""
+                        }
 
                         ${
                             error
@@ -411,21 +554,50 @@ function renderContacts(items) {
                                 `
                                 : ""
                         }
+
                     </div>
 
-                    <span
+                    <div
                         class="
                             contact-status
                             status-${escapeHtml(status)}
                         "
                     >
-                        ${escapeHtml(status)}
-                    </span>
+                        ${formatStatus(status)}
+                    </div>
 
                 </div>
             `;
         })
         .join("");
+}
+
+
+function formatStatus(status) {
+    const labels = {
+        waiting:
+            "Waiting",
+
+        queued:
+            "Queued",
+
+        processing:
+            "Processing",
+
+        sent:
+            "Sent",
+
+        failed:
+            "Failed",
+
+        completed:
+            "Completed",
+    };
+
+    return (
+        labels[status]
+        || status
+    );
 }
 
 
@@ -457,271 +629,5 @@ function escapeHtml(value) {
 
 
 updateUrlCount();
-refreshDashboard();const results =
-    document.getElementById("results");
 
-
-function getUrls() {
-    return urlsInput.value
-        .split("\n")
-        .map(url => url.trim())
-        .filter(Boolean);
-}
-
-
-function updateUrlCount() {
-    const urls = getUrls();
-
-    urlCount.textContent =
-        `${urls.length} profiles`;
-}
-
-
-urlsInput.addEventListener(
-    "input",
-    updateUrlCount
-);
-
-
-async function startMessaging() {
-    const urls = getUrls();
-
-    const template =
-        templateInput.value.trim();
-
-    if (!urls.length) {
-        alert(
-            "Add at least one LinkedIn URL."
-        );
-
-        return;
-    }
-
-    if (!template) {
-        alert(
-            "Message template cannot be empty."
-        );
-
-        return;
-    }
-
-    startButton.disabled = true;
-
-    const response = await fetch(
-        "/api/messages/start",
-        {
-            method: "POST",
-
-            headers: {
-                "Content-Type":
-                    "application/json",
-            },
-
-            body: JSON.stringify({
-                urls,
-                template,
-            }),
-        }
-    );
-
-    const data = await response.json();
-
-    if (!data.ok) {
-        alert(
-            data.error || "Could not start job."
-        );
-
-        startButton.disabled = false;
-
-        return;
-    }
-
-    pollStatus();
-}
-
-
-startButton.addEventListener(
-    "click",
-    startMessaging
-);
-
-
-async function pollStatus() {
-    const response = await fetch(
-        "/api/messages/status"
-    );
-
-    const state = await response.json();
-
-    renderState(
-        state
-    );
-
-    if (state.status === "running") {
-        setTimeout(
-            pollStatus,
-            1000
-        );
-
-        return;
-    }
-
-    startButton.disabled = false;
-}
-
-
-function renderState(state) {
-    systemStatus.textContent =
-        state.status || "idle";
-
-    const total =
-        state.total || 0;
-
-    const processed =
-        state.processed || 0;
-
-    const remaining =
-        Math.max(
-            total - processed,
-            0
-        );
-
-    const percent =
-        total
-            ? (processed / total) * 100
-            : 0;
-
-    progressNumber.textContent =
-        `${processed} / ${total}`;
-
-    progressBar.style.width =
-        `${percent}%`;
-
-    sentCount.textContent =
-        state.sent || 0;
-
-    failedCount.textContent =
-        state.failed || 0;
-
-    remainingCount.textContent =
-        remaining;
-
-    if (state.status === "running") {
-        progressLabel.textContent =
-            "Messaging in progress";
-    }
-
-    else if (
-        state.status === "completed"
-    ) {
-        progressLabel.textContent =
-            "Completed";
-    }
-
-    else {
-        progressLabel.textContent =
-            "No active run";
-    }
-
-    renderCurrent(
-        state.current
-    );
-
-    renderResults(
-        state.results || []
-    );
-}
-
-
-function renderCurrent(current) {
-    if (!current) {
-        currentProfile.classList.add(
-            "empty"
-        );
-
-        currentProfile.innerHTML =
-            "Waiting for a profile.";
-
-        return;
-    }
-
-    currentProfile.classList.remove(
-        "empty"
-    );
-
-    currentProfile.innerHTML = `
-        <div class="result-name">
-            ${
-                current.full_name
-                || "Opening profile..."
-            }
-        </div>
-
-        <div class="result-url">
-            ${current.url}
-        </div>
-    `;
-}
-
-
-function renderResults(items) {
-    if (!items.length) {
-        results.innerHTML = `
-            <div class="empty-state">
-                No results yet.
-            </div>
-        `;
-
-        return;
-    }
-
-    results.innerHTML =
-        items
-        .slice()
-        .reverse()
-        .map(item => {
-            const statusClass =
-                item.status === "sent"
-                    ? "status-sent"
-                    : "status-failed";
-
-            return `
-                <div class="result-row">
-
-                    <div>
-                        <div class="result-name">
-                            ${
-                                item.full_name
-                                || item.url
-                            }
-                        </div>
-
-                        <div class="result-url">
-                            ${item.url}
-                        </div>
-
-                        ${
-                            item.error
-                                ? `
-                                    <div class="result-url">
-                                        ${item.error}
-                                    </div>
-                                `
-                                : ""
-                        }
-                    </div>
-
-                    <strong
-                        class="${statusClass}"
-                    >
-                        ${item.status}
-                    </strong>
-
-                </div>
-            `;
-        })
-        .join("");
-}
-
-
-updateUrlCount();
+refreshDashboard();
