@@ -1,6 +1,6 @@
 {
   "job_id": "e66fec32-0a71-4bed-95e0-71c2d8b6392a",
-  "status": "processing",
+  "status": "completed",
   "urls": [
     "https://www.linkedin.com/in/tony-tran-17b768290/",
     "https://www.linkedin.com/in/frank-nguyen-flearningstudio/"
@@ -10,16 +10,7 @@
   "processed": 2,
   "sent": 2,
   "failed": 0,
-  "current": {
-    "index": 2,
-    "total": 2,
-    "url": "",
-    "full_name": "",
-    "first_name": "",
-    "status": "completed",
-    "step": "job_completed",
-    "error": ""
-  },
+  "current": null,
   "results": [
     {
       "index": 1,
@@ -47,7 +38,7 @@
   "error": "",
   "created_at": "2026-08-14T03:49:24.392219+00:00",
   "started_at": "2026-08-14T03:49:28.592312+00:00",
-  "completed_at": null,
+  "completed_at": "2026-08-14T03:50:04.102601+00:00",
   "worker_id": "Justin.local-74976",
-  "updated_at": "2026-08-14T03:50:02.892409+00:00"
+  "updated_at": "2026-08-14T03:50:04.102608+00:00"
 }
